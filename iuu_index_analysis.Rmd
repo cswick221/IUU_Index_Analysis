@@ -1,0 +1,159 @@
+---
+title: "IUU_Index_Analysis"
+author: "Chloe Swick"
+date: "2023-12-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(janitor)
+```
+
+
+
+# Loading engagment metrics per organization 
+
+```{r}
+organization_engagements <- read_csv("Skylight Program Metrics_Organizations_Table.csv")
+```
+
+
+# Loading engagement metrics per country 
+
+```{r}
+weekly_country_engagements <- read_csv("Skylight Program Metrics_Countries_Table.csv")
+```
+
+
+
+# Loading total engagements per country and organization 
+
+```{r}
+skylight_countries <- read_csv("Metrics_Countries_Pivot_table-2.csv")
+```
+
+
+# Loading IUU index indicator scores 2019-2023 
+
+```{r}
+indicator_scores <- read_csv("iuu_fishing_index_2019-2023_indicator_scores.csv")
+```
+
+
+# Loading Skylight deal dates 
+
+```{r}
+skylight_deals <- read_excel("Skylight Deals.xlsx")
+```
+
+
+
+# Cleaning data 
+
+
+```{r}
+skylight_deals <- clean_names(skylight_deals)
+iuu_index_scores <- clean_names(indicator_scores)
+organization_engagements <- clean_names(organization_engagements)
+country_engagements_total <- clean_names(skylight_countries)
+weekly_country_engagements <- clean_names(weekly_country_engagements)
+```
+
+
+
+# Compiling data 
+
+join by country 
+
+```{r}
+colnames(country_engagements_total)[1] = "x"
+```
+
+
+```{r}
+df3 <- country_engagements_total %>%
+  filter(x %in% iuu_index_countries)
+
+```
+
+
+```{r}
+iuu_index_countries <- c(unique(iuu_index_scores$country))
+
+view(iuu_index_scores)
+
+skylight_countries <- c(unique(weekly_country_engagements$country))
+
+view(skylight_countries)
+
+```
+
+
+
+
+```{r}
+matches <- grep(paste(iuu_index_countries, collapse = "|"), 
+                skylight_countries, ignore.case = TRUE, value = TRUE)
+
+view(matches)
+
+#country_engagements$iuu_index_match <- ifelse(iuu_index_countries %in% matches, iuu_index_countries, NA)
+
+```
+
+
+
+```{r}
+
+# Get unique values from both vectors
+all_values <- unique(c(iuu_index_countries, skylight_countries))
+
+# Create a data frame with NAs
+dind_df <- data.frame(Vector1 = all_values, iuu_index_countries = NA, skylight_countries = NA)
+
+# Fill in values in the data frame based on the presence in vectors
+dind_df$iuu_index_countries[match(iuu_index_countries, dind_df$Vector1)] <- iuu_index_countries
+dind_df$skylight_countries[match(skylight_countries, dind_df$Vector1)] <- skylight_countries
+
+# Print the result
+print(dind_df)
+```
+
+
+```{r}
+# Sample vectors
+vector1 <- c("A", "B", "C", "D")
+vector2 <- c("B", "D", "A")
+
+# Get unique values from both vectors
+all_values <- unique(c(vector1, vector2))
+
+# Create a data frame with NAs
+merged_df <- data.frame(Vector1 = all_values, Vector2 = NA, Vector3 = NA)
+
+# Fill in values in the data frame based on the presence in vectors
+merged_df$Vector2[match(vector1, merged_df$Vector1)] <- vector1
+merged_df$Vector3[match(vector2, merged_df$Vector1)] <- vector2
+
+# Print the result
+print(merged_df)
+```
+
+
+```{r}
+matches_df <- data.frame(matches)
+```
+
+
+```{r}
+mexico_rows <- engagements_table %>%
+  filter(grepl("mexico", tolower(Engagement)))
+```
+
+
+
+
+
