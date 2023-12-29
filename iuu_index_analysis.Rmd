@@ -112,40 +112,34 @@ view(matches)
 all_values <- unique(c(iuu_index_countries, skylight_countries))
 
 # Create a data frame with NAs
-dind_df <- data.frame(Vector1 = all_values, iuu_index_countries = NA, skylight_countries = NA)
+common_countries_df <- data.frame(country = all_values, iuu_index_countries = NA, skylight_countries = NA)
 
 # Fill in values in the data frame based on the presence in vectors
-dind_df$iuu_index_countries[match(iuu_index_countries, dind_df$Vector1)] <- iuu_index_countries
-dind_df$skylight_countries[match(skylight_countries, dind_df$Vector1)] <- skylight_countries
+common_countries_df$iuu_index_countries[match(iuu_index_countries, common_countries_df$country)] <- iuu_index_countries
+common_countries_df$skylight_countries[match(skylight_countries, common_countries_df$country)] <- skylight_countries
+
+common_countries_df$treatment_yes_no <- ifelse(is.na(common_countries_df$skylight_countries), 0, 1)
+
 
 # Print the result
-print(dind_df)
+#print(common_countries_df) ## good start but need to figure out a good way to get rid of the spelling differences (micronesia and south korea). maybe we can ask Chris
 ```
 
 
 ```{r}
-# Sample vectors
-vector1 <- c("A", "B", "C", "D")
-vector2 <- c("B", "D", "A")
-
-# Get unique values from both vectors
-all_values <- unique(c(vector1, vector2))
-
-# Create a data frame with NAs
-merged_df <- data.frame(Vector1 = all_values, Vector2 = NA, Vector3 = NA)
-
-# Fill in values in the data frame based on the presence in vectors
-merged_df$Vector2[match(vector1, merged_df$Vector1)] <- vector1
-merged_df$Vector3[match(vector2, merged_df$Vector1)] <- vector2
-
-# Print the result
-print(merged_df)
+#weekly_country_engagements$active_yes_no <- ifelse(weekly_country_engagements$no_of_active_weeks>4, 1, 0)
 ```
+
 
 
 ```{r}
-matches_df <- data.frame(matches)
+dind_df <- iuu_index_scores %>% full_join(common_countries_df, by = join_by(country)) %>%
+  full_join(weekly_country_engagements, by = join_by(country))
 ```
+
+
+
+
 
 
 ```{r}
