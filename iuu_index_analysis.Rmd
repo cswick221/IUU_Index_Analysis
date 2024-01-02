@@ -146,6 +146,7 @@ ctk <- c("deal_title", "deal_country", "deal_deal_created", "deal_last_stage_cha
 active_country_dates_df <- skylight_deals %>% 
   filter(deal_stage == "Engaged") %>% 
   subset(select = ctk)
+# 35 countries as "engaged", but 45 countries in analytics data
 ```
 
 
