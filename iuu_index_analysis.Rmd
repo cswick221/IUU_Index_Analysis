@@ -5,11 +5,12 @@ date: "2023-12-21"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(tidyverse)
 library(dplyr)
 library(janitor)
+library(readxl)
 ```
 
 
@@ -72,14 +73,6 @@ join by country
 colnames(country_engagements_total)[1] = "x"
 ```
 
-
-```{r}
-df3 <- country_engagements_total %>%
-  filter(x %in% iuu_index_countries)
-
-```
-
-
 ```{r}
 iuu_index_countries <- c(unique(iuu_index_scores$country))
 
@@ -91,6 +84,10 @@ view(skylight_countries)
 
 ```
 
+```{r}
+df3 <- country_engagements_total %>%
+  filter(x %in% iuu_index_countries)
+```
 
 
 
@@ -138,7 +135,6 @@ dind_df <- iuu_index_scores %>% full_join(common_countries_df, by = join_by(coun
 ```
 
 
-
 ```{r}
 
 ctk <- c("deal_title", "deal_country", "deal_deal_created", "deal_last_stage_change")
@@ -146,6 +142,21 @@ ctk <- c("deal_title", "deal_country", "deal_deal_created", "deal_last_stage_cha
 active_country_dates_df <- skylight_deals %>% 
   filter(deal_stage == "Engaged") %>% 
   subset(select = ctk)
+```
+
+```{r}
+active_country_dates_df %>% 
+  mutate(treatment_year = as.integer(format(as.Date(deal_deal_created), "%Y"))) 
+
+dind_df_1 <- dind_df %>% 
+  left_join(dind_df, active_country_dates_df %>%
+    select(deal_country, treatment_year), 
+    by = c("skylight_countries" = "deal_country")) # %>%
+  #
+
+mutate(dind_df_1, Post_Treatment = ifelse(dind_df$treatment_year <= dind_df$year, 1, 0))
+
+
 ```
 
 
