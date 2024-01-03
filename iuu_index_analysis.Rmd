@@ -146,20 +146,27 @@ active_country_dates_df <- skylight_deals %>%
 ```
 
 ```{r}
-active_country_dates_df %>% 
+active_country_dates_df <- active_country_dates_df %>% 
   mutate(treatment_year = as.integer(format(as.Date(deal_deal_created), "%Y"))) 
 
-dind_df_1 <- dind_df %>% 
-  left_join(dind_df, active_country_dates_df %>%
+dind_df_final <- dind_df %>% 
+  left_join(active_country_dates_df %>% 
     select(deal_country, treatment_year), 
-    by = c("skylight_countries" = "deal_country")) # %>%
-  #
+    by = c("skylight_countries" = "deal_country")) %>% 
+  mutate(post_treatment = ifelse(is.na(treatment_year) | treatment_year <= year, 1, 0),
+         post_treatment = ifelse(is.na(treatment_year), 0, post_treatment)) %>% 
+  rename(skylight_treatment = treatment_yes_no)
 
-mutate(dind_df_1, Post_Treatment = ifelse(dind_df$treatment_year <= dind_df$year, 1, 0))
-
+### still want to add the number of sessions as a measure of engagement
 
 ```
 
+# Linear regression 
+```{r}
+DiD_model <- lm(score ~ skylight_treatment + post_treatment + skylight_treatment:post_treatment, data = dind_df_final)
+
+summary(DiD_model)
+```
 
 
 
