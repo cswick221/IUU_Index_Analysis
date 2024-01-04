@@ -163,11 +163,13 @@ dind_df_final <- dind_df %>%
 
 # Linear regression 
 ```{r}
-DiD_model <- lm(score ~ skylight_treatment + post_treatment + skylight_treatment:post_treatment, data = dind_df_final)
+dind_df_5 <- dind_df_final %>% 
+  filter(indicator_id==5)
+
+DiD_model_5 <- lm(score ~ skylight_treatment + post_treatment + skylight_treatment:post_treatment, data = dind_df_5)
 
 summary(DiD_model)
 ```
-
 
 
 
