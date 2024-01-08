@@ -171,6 +171,13 @@ dind_df_final <- dind_df %>%
 
 ```
 
+
+```{r}
+dind_df_nbc <- dind_df_final %>% 
+  filter(dind_df_final$treatment_year != 2019)
+```
+
+
 ```{r}
 dind_df_5 <- dind_df_final %>% 
   filter(indicator_id == 5)
@@ -179,6 +186,10 @@ dind_df_5 <- dind_df_final %>%
 
 
 # Data Visualizations
+
+figure out how many NA values there are per indicator 
+
+
 ```{r}
 ggplot(dind_df_final, aes(x = year, y = score, color = skylight_treatment, group = interaction(indicator_id, skylight_treatment))) +
   stat_summary(fun = "mean", geom = "line", size = 1) +
@@ -186,8 +197,17 @@ ggplot(dind_df_final, aes(x = year, y = score, color = skylight_treatment, group
        x = "Year",
        y = "Mean Score",
        color = "Skylight Treatment") +
-  facet_wrap(~ indicator_id, scales = "free_y") +
+  facet_wrap(~ indicator_id) +
   theme_minimal()
+```
+
+
+mexico and indicator 21
+
+```{r}
+ggplot(subset(dind_df_final, indicator_id == "32"), aes(x = year, y = score,group = country, color = skylight_treatment, group = interaction(indicator_id, skylight_treatment))) +
+  geom_point(position = position_jitter(width = 0.2, height = 0), alpha = 0.5)+
+  theme(legend.position = "none")
 ```
 
 
