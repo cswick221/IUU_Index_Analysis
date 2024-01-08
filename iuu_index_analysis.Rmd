@@ -64,34 +64,44 @@ weekly_country_engagements <- clean_names(weekly_country_engagements)
 ```
 
 
+```{r}
+weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name")
+
+iuu_index_scores$country[iuu_index_scores$country == "Micronesia (FS of)"] <- "Federated States of Micronesia"
+iuu_index_scores$country <- countrycode(iuu_index_scores$country, "country.name", "country.name")
+```
+
+
+
 
 # Compiling data 
 
 join by country 
 
 ```{r}
-colnames(country_engagements_total)[1] = "x"
+colnames(country_engagements_total)[1] = "country"
 ```
 
 ```{r}
 iuu_index_countries <- c(unique(iuu_index_scores$country))
 
-view(iuu_index_scores)
+#view(iuu_index_scores)
 
 skylight_countries <- c(unique(weekly_country_engagements$country))
 
-view(skylight_countries)
+#view(skylight_countries)
 
 ```
 
-```{r}
+didnt use: 
+
 df3 <- country_engagements_total %>%
-  filter(x %in% iuu_index_countries)
-```
+  filter(country %in% iuu_index_countries)
 
 
+didnt use:
 
-```{r}
+
 matches <- grep(paste(iuu_index_countries, collapse = "|"), 
                 skylight_countries, ignore.case = TRUE, value = TRUE)
 
@@ -99,7 +109,7 @@ view(matches)
 
 #country_engagements$iuu_index_match <- ifelse(iuu_index_countries %in% matches, iuu_index_countries, NA)
 
-```
+
 
 
 
