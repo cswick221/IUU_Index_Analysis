@@ -161,15 +161,25 @@ dind_df_final <- dind_df %>%
 
 ```
 
-# Linear regression 
 ```{r}
 dind_df_5 <- dind_df_final %>% 
-  filter(indicator_id==5)
+  filter(indicator_id == 5)
 
-DiD_model_5 <- lm(score ~ skylight_treatment + post_treatment + skylight_treatment:post_treatment, data = dind_df_5)
-
-summary(DiD_model)
 ```
+
+
+# Data Visualizations
+```{r}
+ggplot(dind_df_final, aes(x = year, y = score, color = skylight_treatment, group = interaction(indicator_id, skylight_treatment))) +
+  stat_summary(fun = "mean", geom = "line", size = 1) +
+  labs(title = "Mean Score Over Years by Skylight Treatment",
+       x = "Year",
+       y = "Mean Score",
+       color = "Skylight Treatment") +
+  facet_wrap(~ indicator_id, scales = "free_y") +
+  theme_minimal()
+```
+
 
 
 
