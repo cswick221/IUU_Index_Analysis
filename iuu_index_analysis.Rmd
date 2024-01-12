@@ -152,8 +152,28 @@ ctk <- c("deal_title", "deal_country", "deal_deal_created", "deal_last_stage_cha
 active_country_dates_df <- skylight_deals %>% 
   filter(deal_stage == "Engaged") %>% 
   subset(select = ctk)
-# 35 countries as "engaged", but 45 countries in analytics data
+
+deal_date_test <- skylight_deals %>% 
+  subset(select = ctk)
+
+deal_date_test <- deal_date_test %>% 
+  mutate(treatment_year = as.integer(format(as.Date(deal_deal_created), "%Y"))) 
+
+
+## 35 countries as "engaged", but 45 countries in analytics data
+## 66 countries as deploying or engaged
 ```
+
+
+countries listed as "dormant" but active in analytics data:
+micronesia --> 17/2 sessions
+malaysia --> 8/53. 
+papua new guinea --> 64. 
+samoa --> 14/5. 
+thailand--> 376. 
+uruguay --> 48
+
+
 
 ```{r}
 active_country_dates_df <- active_country_dates_df %>% 
@@ -166,8 +186,16 @@ dind_df_final <- dind_df %>%
   mutate(post_treatment = ifelse(is.na(treatment_year) | treatment_year <= year, 1, 0),
          post_treatment = ifelse(is.na(treatment_year), 0, post_treatment)) %>% 
   rename(skylight_treatment = treatment_yes_no)
-
 ### still want to add the number of sessions as a measure of engagement
+
+############## testing above code with deal_date_test 
+dind_test <- dind_df %>% 
+  left_join(deal_date_test %>% 
+    select(deal_country, treatment_year), 
+    by = c("skylight_countries" = "deal_country")) 
+
+####### you end up with a bunch of countries having 1 under post treatment that aren't using Skylight, I wonder if this is something we need to worry about in the sense that a country might have been using Skylight in 2019 or 2021 but doesn't now 
+
 
 ```
 
@@ -202,7 +230,6 @@ ggplot(dind_df_final, aes(x = year, y = score, color = skylight_treatment, group
 ```
 
 
-mexico and indicator 21
 
 ```{r}
 ggplot(subset(dind_df_final, indicator_id == "32"), aes(x = year, y = score,group = country, color = skylight_treatment, group = interaction(indicator_id, skylight_treatment))) +
@@ -213,10 +240,15 @@ ggplot(subset(dind_df_final, indicator_id == "32"), aes(x = year, y = score,grou
 
 
 
+
+
 ```{r}
-mexico_rows <- engagements_table %>%
-  filter(grepl("mexico", tolower(Engagement)))
+trying_df <- country_engagements_total %>% 
+  filter(grepl("Gabon", country))
+
 ```
+
+
 
 
 
