@@ -11,6 +11,7 @@ library(tidyverse)
 library(dplyr)
 library(janitor)
 library(readxl)
+library(countrycode)
 ```
 
 
@@ -47,7 +48,7 @@ indicator_scores <- read_csv("iuu_fishing_index_2019-2023_indicator_scores.csv")
 # Loading Skylight deal dates 
 
 ```{r}
-skylight_deals <- read_excel("Skylight Deals.xlsx")
+skylight_deals <- read_excel("updated deals.xlsx")
 ```
 
 
@@ -69,6 +70,10 @@ weekly_country_engagements$country <- countrycode(weekly_country_engagements$cou
 
 iuu_index_scores$country[iuu_index_scores$country == "Micronesia (FS of)"] <- "Federated States of Micronesia"
 iuu_index_scores$country <- countrycode(iuu_index_scores$country, "country.name", "country.name")
+
+skylight_deals$deal_country[skylight_deals$deal_country == "Micronesia"] <- "Federated States of Micronesia"
+
+skylight_deals$country <- countrycode(skylight_deals$deal_country, "country.name", "country.name") 
 ```
 
 
@@ -92,24 +97,6 @@ skylight_countries <- c(unique(weekly_country_engagements$country))
 #view(skylight_countries)
 
 ```
-
-didnt use: 
-
-df3 <- country_engagements_total %>%
-  filter(country %in% iuu_index_countries)
-
-
-didnt use:
-
-
-matches <- grep(paste(iuu_index_countries, collapse = "|"), 
-                skylight_countries, ignore.case = TRUE, value = TRUE)
-
-view(matches)
-
-#country_engagements$iuu_index_match <- ifelse(iuu_index_countries %in% matches, iuu_index_countries, NA)
-
-
 
 
 
@@ -140,28 +127,24 @@ common_countries_df$treatment_yes_no <- ifelse(is.na(common_countries_df$skyligh
 
 
 ```{r}
-dind_df <- iuu_index_scores %>% full_join(common_countries_df, by = join_by(country)) %>%
+dind_df <- iuu_index_scores %>% 
+  full_join(common_countries_df, by = join_by(country)) %>%
   full_join(weekly_country_engagements, by = join_by(country))
 ```
 
 
 ```{r}
 
-ctk <- c("deal_title", "deal_country", "deal_deal_created", "deal_last_stage_change")
+ctk <- c("deal_title", "country", "deal_deployment_date", "deal_organisation","organization_type")
 
 active_country_dates_df <- skylight_deals %>% 
-  filter(deal_stage == "Engaged") %>% 
-  subset(select = ctk)
+  subset(select = ctk) %>% 
+  filter(deal_deployment_date > 2019) %>% 
+  group_by(country) %>%
+  filter(deal_deployment_date == min(deal_deployment_date, na.rm = TRUE)) %>%
+  ungroup() %>%  #filter out duplicate country entries for country level analysis 
+  distinct(country, deal_deployment_date, .keep_all = TRUE)
 
-deal_date_test <- skylight_deals %>% 
-  subset(select = ctk)
-
-deal_date_test <- deal_date_test %>% 
-  mutate(treatment_year = as.integer(format(as.Date(deal_deal_created), "%Y"))) 
-
-
-## 35 countries as "engaged", but 45 countries in analytics data
-## 66 countries as deploying or engaged
 ```
 
 
@@ -176,47 +159,55 @@ uruguay --> 48
 
 
 ```{r}
-active_country_dates_df <- active_country_dates_df %>% 
-  mutate(treatment_year = as.integer(format(as.Date(deal_deal_created), "%Y"))) 
+active_country_dates_clean <- active_country_dates_df %>% 
+  mutate(treatment_year = as.integer(format(as.Date(deal_deployment_date), "%Y"))) %>% 
+  filter(organization_type != "Regional") %>% #come back to this assumption later
+  select(country, treatment_year) %>% 
+  rename(deal_country = country)
+```
 
-dind_df_final <- dind_df %>% 
-  left_join(active_country_dates_df %>% 
+
+```{r}
+dind_id_1 <- dind_df %>% 
+  filter(indicator_id == 1)
+```
+
+
+
+
+```{r}
+dind_df_1 <- dind_id_1 %>% 
+  left_join(active_country_dates_clean %>% 
     select(deal_country, treatment_year), 
     by = c("skylight_countries" = "deal_country")) %>% 
-  mutate(post_treatment = ifelse(is.na(treatment_year) | treatment_year <= year, 1, 0),
-         post_treatment = ifelse(is.na(treatment_year), 0, post_treatment)) %>% 
-  rename(skylight_treatment = treatment_yes_no)
+  rename(skylight_treatment = treatment_yes_no) %>% 
+  rename(index_year = year) %>% 
+  filter(!(skylight_treatment == 1 & is.na(treatment_year))) %>% #removing skylight countries without deal date 
+  mutate(pre_post_treatment = case_when(
+    skylight_treatment == 0 & index_year < 2021 ~ 0,
+    skylight_treatment == 0 & index_year >= 2021 ~ 1,
+    skylight_treatment == 1 & index_year < treatment_year ~ 0,
+    skylight_treatment == 1 & index_year >= treatment_year ~ 1,
+    TRUE ~ NA_integer_  # Default case, you can change NA to another value if needed
+  )) 
 ### still want to add the number of sessions as a measure of engagement
 
-############## testing above code with deal_date_test 
-dind_test <- dind_df %>% 
-  left_join(deal_date_test %>% 
-    select(deal_country, treatment_year), 
-    by = c("skylight_countries" = "deal_country")) 
-
-####### you end up with a bunch of countries having 1 under post treatment that aren't using Skylight, I wonder if this is something we need to worry about in the sense that a country might have been using Skylight in 2019 or 2021 but doesn't now 
 
 
 ```
 
-
+# Try the regression!
 ```{r}
-dind_df_nbc <- dind_df_final %>% 
-  filter(dind_df_final$treatment_year != 2019)
+dind_analysis_1 <- lm(score ~ skylight_treatment + pre_post_treatment + skylight_treatment * pre_post_treatment, data = dind_df_1)
+
+summary(dind_analysis_1)
 ```
 
-
-```{r}
-dind_df_5 <- dind_df_final %>% 
-  filter(indicator_id == 5)
-
-```
 
 
 # Data Visualizations
 
 figure out how many NA values there are per indicator 
-
 
 ```{r}
 ggplot(dind_df_final, aes(x = year, y = score, color = skylight_treatment, group = interaction(indicator_id, skylight_treatment))) +
@@ -238,15 +229,6 @@ ggplot(subset(dind_df_final, indicator_id == "32"), aes(x = year, y = score,grou
 ```
 
 
-
-
-
-
-```{r}
-trying_df <- country_engagements_total %>% 
-  filter(grepl("Gabon", country))
-
-```
 
 
 
