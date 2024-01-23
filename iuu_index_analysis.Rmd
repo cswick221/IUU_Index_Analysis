@@ -204,7 +204,14 @@ dind_df_all <- dind_df %>%
     skylight_treatment == 1 & index_year < treatment_year ~ 0,
     skylight_treatment == 1 & index_year >= treatment_year ~ 1,
     TRUE ~ NA_integer_  # Default case, you can change NA to another value if needed
-  )) 
+  )) %>% 
+  drop_na(score)
+
+score_na_count <- sum(is.na(dind_df_all$score))
+
+# Display the NA count for the score column
+print(score_na_count)
+  
 ```
 
 
@@ -230,12 +237,18 @@ for (i in 1:40) {
   results_by_indicator <- bind_rows(results_by_indicator, tidy_results)
 }
 
+did_regression_results <- results_by_indicator %>% 
+  filter(term == "skylight_treatment:pre_post_treatment") %>% 
+  janitor::clean_names() %>% 
+  rename(regression_estimate = estimate)
+
 # Print the results (optional)
 print(results_by_indicator)
 
 
 # Export to CSV file (optional)
 write.csv(results_by_indicator, file = "linear_model_results.csv", row.names = FALSE)
+write.csv(did_regression_results, file = "linear_model_did_results.csv", row.names = FALSE)
 
 ```
 
@@ -243,18 +256,67 @@ write.csv(results_by_indicator, file = "linear_model_results.csv", row.names = F
 significant_p <- results_by_indicator %>% 
   filter(p.value <= .05)
 
-sig_p_pre_post <- significant_p %>% 
-  filter(term == "pre_post_treatment")
+sig_p_interaction <- significant_p %>% 
+  filter(term == "skylight_treatment:pre_post_treatment")
 ```
 
 
 
 ```{r}
+dind_df_1 <- dind_df_all %>% 
+  filter(indicator_id == 1)
+
 dind_analysis_1 <- lm(score ~ skylight_treatment + pre_post_treatment + skylight_treatment * pre_post_treatment, data = dind_df_1)
 
 summary(dind_analysis_1)
 ```
 
+# Empircal Estimate
+
+### For Loop for all DiD Estimates
+```{r}
+# Get unique indicator_ids
+unique_indicator_ids <- unique(dind_df_all$indicator_id)
+
+# Initialize an empty vector to store DiD estimates
+did_estimates <- numeric()
+
+# Loop through each indicator_id
+for (id in unique_indicator_ids) {
+  
+  # Subset data for the specific indicator_id
+  subset_data <- dind_df_all %>%
+    filter(indicator_id == id)
+  
+  # Group by skylight_treatment and pre_post_treatment
+  grouped_data <- subset_data %>%
+    group_by(skylight_treatment, pre_post_treatment) %>%
+    summarize(mean_score = mean(score))
+  
+  # Calculate the DiD estimate
+  did_estimate <- ((grouped_data$mean_score[4] - grouped_data$mean_score[3]) -
+                   (grouped_data$mean_score[2] - grouped_data$mean_score[1]))
+  
+  # Append the DiD estimate to the vector
+  did_estimates <- c(did_estimates, did_estimate)
+}
+
+# Combine indicator_ids and DiD estimates into a data frame
+did_empirical_results <- data.frame(indicator_id = unique_indicator_ids, empirical_estimate = did_estimates)
+
+```
+
+### Compare empirical results with regression results
+```{r}
+did_comparison <- left_join(
+  did_empirical_results,
+  did_regression_results %>% 
+    select(indicator = indicator, regression_estimate, p_value),
+  by = c("indicator_id" = "indicator")
+)
+
+write.csv(did_comparison, file = "did_comparison.csv", row.names = FALSE)
+```
 
 
 # Data Visualizations
