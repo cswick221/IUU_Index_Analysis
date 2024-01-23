@@ -12,6 +12,8 @@ library(dplyr)
 library(janitor)
 library(readxl)
 library(countrycode)
+library(broom)
+
 ```
 
 
@@ -75,7 +77,6 @@ skylight_deals$deal_country[skylight_deals$deal_country == "Micronesia"] <- "Fed
 
 skylight_deals$country <- countrycode(skylight_deals$deal_country, "country.name", "country.name") 
 ```
-
 
 
 
@@ -148,15 +149,6 @@ active_country_dates_df <- skylight_deals %>%
 ```
 
 
-countries listed as "dormant" but active in analytics data:
-micronesia --> 17/2 sessions
-malaysia --> 8/53. 
-papua new guinea --> 64. 
-samoa --> 14/5. 
-thailand--> 376. 
-uruguay --> 48
-
-
 
 ```{r}
 active_country_dates_clean <- active_country_dates_df %>% 
@@ -171,7 +163,6 @@ active_country_dates_clean <- active_country_dates_df %>%
 dind_id_1 <- dind_df %>% 
   filter(indicator_id == 1)
 ```
-
 
 
 
@@ -196,7 +187,68 @@ dind_df_1 <- dind_id_1 %>%
 
 ```
 
+
+Trying with all of the indicators 
+
+```{r}
+dind_df_all <- dind_df %>% 
+  left_join(active_country_dates_clean %>% 
+    select(deal_country, treatment_year), 
+    by = c("skylight_countries" = "deal_country")) %>% 
+  rename(skylight_treatment = treatment_yes_no) %>% 
+  rename(index_year = year) %>% 
+  filter(!(skylight_treatment == 1 & is.na(treatment_year))) %>% #removing skylight countries without deal date 
+  mutate(pre_post_treatment = case_when(
+    skylight_treatment == 0 & index_year < 2021 ~ 0,
+    skylight_treatment == 0 & index_year >= 2021 ~ 1,
+    skylight_treatment == 1 & index_year < treatment_year ~ 0,
+    skylight_treatment == 1 & index_year >= treatment_year ~ 1,
+    TRUE ~ NA_integer_  # Default case, you can change NA to another value if needed
+  )) 
+```
+
+
 # Try the regression!
+
+
+regression for loop! 
+
+```{r}
+results_by_indicator <- data.frame()
+
+for (i in 1:40) {
+  # Subset the data for each indicator value
+  subset_data <- dind_df_all[dind_df_all$indicator_id == i, ]
+  
+  # Run linear regression with interaction
+  model <- lm(score ~ skylight_treatment + pre_post_treatment + skylight_treatment * pre_post_treatment, data = subset_data)
+  
+ tidy_results <- tidy(model) %>%
+    mutate(indicator = i)
+  
+  # Bind the results to the main data frame
+  results_by_indicator <- bind_rows(results_by_indicator, tidy_results)
+}
+
+# Print the results (optional)
+print(results_by_indicator)
+
+
+# Export to CSV file (optional)
+write.csv(results_by_indicator, file = "linear_model_results.csv", row.names = FALSE)
+
+```
+
+```{r}
+significant_p <- results_by_indicator %>% 
+  filter(p.value <= .05)
+
+sig_p_pre_post <- significant_p %>% 
+  filter(term == "pre_post_treatment")
+```
+
+
+
 ```{r}
 dind_analysis_1 <- lm(score ~ skylight_treatment + pre_post_treatment + skylight_treatment * pre_post_treatment, data = dind_df_1)
 
