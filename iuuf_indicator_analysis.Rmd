@@ -34,7 +34,8 @@ iuu_index_scores <- clean_names(indicator_scores)
 organization_engagements <- clean_names(organization_engagements)
 country_engagements_total <- clean_names(skylight_countries)
 weekly_country_engagements <- clean_names(weekly_country_engagements)
-governance_indicators <- clean_names(governance_indicators)
+governance_indicators <- clean_names(governance_indicators) %>% 
+  rename(country=country_name)
 skylight_engagement_sessions <- clean_names(skylight_engagement_sessions) 
 
 weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name")
@@ -56,7 +57,7 @@ country_sessions <- country_sessions %>%
   group_by(country) %>%
   summarize(sessions = sum(sessions, na.rm = TRUE))
 
-governance_indicators$country_name <- countrycode(governance_indicators$country_name,"country.name", "country.name")
+governance_indicators$country <- countrycode(governance_indicators$country,"country.name", "country.name")
 
 governance_indicators <- governance_indicators %>%
   rename_all(~ gsub("x(\\d+)_yr\\1", "\\1", .))
@@ -66,6 +67,10 @@ gov_id_estimates <- governance_indicators %>%
   mutate_all(~ ifelse(. == "..", NA, .)) %>%
   na.omit()
 
+gov_id_long <- gov_id_estimates %>%
+  pivot_longer(cols = 5:28,
+               names_to = "year", 
+               values_to = "value")
 
 ```
 
@@ -85,7 +90,7 @@ common_countries_df <- data.frame(country = all_values, iuu_index_countries = NA
 common_countries_df$iuu_index_countries[match(iuu_index_countries, common_countries_df$country)] <- iuu_index_countries
 common_countries_df$skylight_countries[match(skylight_countries, common_countries_df$country)] <- skylight_countries
 
-common_countries_df$treatment_yes_no <- ifelse(is.na(common_countries_df$skylight_countries), 0, 1)
+common_countries_df$skylight_treatment <- ifelse(is.na(common_countries_df$skylight_countries), 0, 1)
 ```
 
 
@@ -93,6 +98,7 @@ common_countries_df$treatment_yes_no <- ifelse(is.na(common_countries_df$skyligh
 iuu_index_df <- iuu_index_scores %>% 
   full_join(common_countries_df, by = join_by(country)) %>%
   full_join(weekly_country_engagements, by = join_by(country))
+
 ctk <- c("deal_title", "country", "deal_deployment_date", "deal_organisation","organization_type")
 
 active_country_dates_df <- skylight_deals %>% 
@@ -106,14 +112,12 @@ active_country_dates_df <- skylight_deals %>%
 active_country_dates_clean <- active_country_dates_df %>% 
   mutate(treatment_year = as.integer(format(as.Date(deal_deployment_date), "%Y"))) %>% 
   filter(organization_type != "Regional") %>% #come back to this assumption later
-  select(country, treatment_year) %>% 
-  rename(deal_country = country)
+  select(country, treatment_year) #%>% 
+ # rename(deal_country = country)
 
 iuu_index_final_df <- iuu_index_df %>% 
-  left_join(active_country_dates_clean %>% 
-    select(deal_country, treatment_year), 
-    by = c("skylight_countries" = "deal_country")) %>% 
-  rename(skylight_treatment = treatment_yes_no) %>% 
+  left_join(active_country_dates_clean, 
+            by = c("skylight_countries" = "country")) %>% 
   rename(index_year = year) %>% 
   filter(!(skylight_treatment == 1 & is.na(treatment_year))) #removing skylight countries without deal date 
 
@@ -126,10 +130,17 @@ iuu_index_final_df <- iuu_index_final_df %>%
 
 ### Compile WB Governance data
 ```{r}
-gov_index_df <- gov_id_estimates %>% 
-  left_join(active_country_dates_clean %>% 
-    select(deal_country, treatment_year), 
-    by = c("skylight_countries" = "deal_country")) %>% 
-  rename(skylight_treatment = treatment_yes_no)
+wb_gov_index_df <- gov_id_long %>% 
+  filter(country %in% iuu_index_countries) %>% 
+  full_join(common_countries_df %>% 
+      select(country, skylight_treatment),
+    by = join_by(country)) %>%
+  full_join(weekly_country_engagements,
+    by = join_by(country)) %>% 
+  full_join(country_sessions,
+    by = join_by(country)) %>% 
+  mutate(
+    no_of_active_weeks = ifelse(is.na(no_of_active_weeks), 0, no_of_active_weeks),
+    sessions = ifelse(is.na(sessions), 0, sessions))
 ```
 
