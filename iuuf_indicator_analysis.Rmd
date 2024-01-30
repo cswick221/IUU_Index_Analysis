@@ -1,0 +1,135 @@
+---
+title: "iuuf_indicator_analysis"
+author: "E.M.Thomas"
+date: "2024-01-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(readxl)
+library(countrycode)
+library(broom)
+library(here)
+library(tidyr)
+```
+
+### Load data 
+```{r}
+organization_engagements <- read_csv("Skylight Program Metrics_Organizations_Table.csv")
+weekly_country_engagements <- read_csv("Skylight Program Metrics_Countries_Table.csv")
+skylight_engagement_sessions <- read_csv("Metrics_Countries_Pivot_table-2.csv")
+indicator_scores <- read_csv("iuu_fishing_index_2019-2023_indicator_scores.csv")
+skylight_deals <- read_excel("updated deals.xlsx")
+governance_indicators <- read_csv(here("data", "governance_indicators.csv"))
+```
+
+### Clean data
+```{r}
+skylight_deals <- clean_names(skylight_deals)
+iuu_index_scores <- clean_names(indicator_scores)
+organization_engagements <- clean_names(organization_engagements)
+country_engagements_total <- clean_names(skylight_countries)
+weekly_country_engagements <- clean_names(weekly_country_engagements)
+governance_indicators <- clean_names(governance_indicators)
+skylight_engagement_sessions <- clean_names(skylight_engagement_sessions) 
+
+weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name")
+
+iuu_index_scores$country[iuu_index_scores$country == "Micronesia (FS of)"] <- "Federated States of Micronesia"
+iuu_index_scores$country <- countrycode(iuu_index_scores$country, "country.name", "country.name")
+
+skylight_deals$deal_country[skylight_deals$deal_country == "Micronesia"] <- "Federated States of Micronesia"
+
+skylight_deals$country <- countrycode(skylight_deals$deal_country, "country.name", "country.name") 
+
+country_sessions <- skylight_engagement_sessions %>% 
+  rename(country = engagement)
+
+country_sessions$country <- countrycode(country_sessions$country, "country.name", "country.name") 
+
+country_sessions <- country_sessions %>% 
+  drop_na(country) %>% 
+  group_by(country) %>%
+  summarize(sessions = sum(sessions, na.rm = TRUE))
+
+governance_indicators$country_name <- countrycode(governance_indicators$country_name,"country.name", "country.name")
+
+governance_indicators <- governance_indicators %>%
+  rename_all(~ gsub("x(\\d+)_yr\\1", "\\1", .))
+
+gov_id_estimates <- governance_indicators %>% 
+  filter(grepl("EST", series_code)) %>% 
+  mutate_all(~ ifelse(. == "..", NA, .)) %>%
+  na.omit()
+
+
+```
+
+### Compile IUUFR Index data 
+```{r}
+colnames(country_engagements_total)[1] = "country"
+iuu_index_countries <- c(unique(iuu_index_scores$country))
+skylight_countries <- c(unique(weekly_country_engagements$country))
+
+# Get unique values from both vectors
+all_values <- unique(c(iuu_index_countries, skylight_countries))
+
+# Create a data frame with NAs
+common_countries_df <- data.frame(country = all_values, iuu_index_countries = NA, skylight_countries = NA)
+
+# Fill in values in the data frame based on the presence in vectors
+common_countries_df$iuu_index_countries[match(iuu_index_countries, common_countries_df$country)] <- iuu_index_countries
+common_countries_df$skylight_countries[match(skylight_countries, common_countries_df$country)] <- skylight_countries
+
+common_countries_df$treatment_yes_no <- ifelse(is.na(common_countries_df$skylight_countries), 0, 1)
+```
+
+
+```{r}
+iuu_index_df <- iuu_index_scores %>% 
+  full_join(common_countries_df, by = join_by(country)) %>%
+  full_join(weekly_country_engagements, by = join_by(country))
+ctk <- c("deal_title", "country", "deal_deployment_date", "deal_organisation","organization_type")
+
+active_country_dates_df <- skylight_deals %>% 
+  subset(select = ctk) %>% 
+  filter(deal_deployment_date > 2019) %>% 
+  group_by(country) %>%
+  filter(deal_deployment_date == min(deal_deployment_date, na.rm = TRUE)) %>%
+  ungroup() %>%  #filter out duplicate country entries for country level analysis 
+  distinct(country, deal_deployment_date, .keep_all = TRUE)
+
+active_country_dates_clean <- active_country_dates_df %>% 
+  mutate(treatment_year = as.integer(format(as.Date(deal_deployment_date), "%Y"))) %>% 
+  filter(organization_type != "Regional") %>% #come back to this assumption later
+  select(country, treatment_year) %>% 
+  rename(deal_country = country)
+
+iuu_index_final_df <- iuu_index_df %>% 
+  left_join(active_country_dates_clean %>% 
+    select(deal_country, treatment_year), 
+    by = c("skylight_countries" = "deal_country")) %>% 
+  rename(skylight_treatment = treatment_yes_no) %>% 
+  rename(index_year = year) %>% 
+  filter(!(skylight_treatment == 1 & is.na(treatment_year))) #removing skylight countries without deal date 
+
+iuu_index_final_df <- iuu_index_final_df %>% 
+  left_join(country_sessions %>% 
+  select(country, sessions), 
+  by = "country")
+```
+
+
+### Compile WB Governance data
+```{r}
+gov_index_df <- gov_id_estimates %>% 
+  left_join(active_country_dates_clean %>% 
+    select(deal_country, treatment_year), 
+    by = c("skylight_countries" = "deal_country")) %>% 
+  rename(skylight_treatment = treatment_yes_no)
+```
+
