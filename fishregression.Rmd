@@ -1,0 +1,51 @@
+---
+title: "fish_indicator_analysis"
+author: "Chloe Swick"
+date: "2024-01-30"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(readxl)
+library(countrycode)
+library(broom)
+library(here)
+library(tidyr)
+```
+
+
+```{r}
+fish_indicators <- read_csv(here("data", "WDIData.csv"))
+```
+
+#clean data
+```{r}
+
+fish_indicators_clean <- fish_indicators %>% 
+  clean_names() %>% 
+  filter(indicator_name %in% c("Aquaculture production (metric tons)", "Capture fisheries production (metric tons)", "Fish species, threatened", "Total fisheries production (metric tons)")) 
+  
+fish_indicators_clean$country <- countrycode(fish_indicators_clean$country_name,"country.name", "country.name")
+
+fish_indicators_clean <- fish_indicators_clean %>% 
+  filter(country %in% iuu_index_countries) %>% 
+  select(-x1960:-x1995) %>% 
+  select(-x2022, -x68)
+
+  
+```
+
+
+
+
+
+
+
+
+
+
