@@ -27,6 +27,7 @@ skylight_deals <- read_excel("updated deals.xlsx")
 governance_indicators <- read_csv(here("data", "governance_indicators.csv"))
 #fish_indicators <- read_csv(here("data", "WDIData.csv"))
 fish_id_wide <- read_csv(here("data", "fish_indicators.csv"))
+wb_gdp_raw <- read_csv(here("data", "World Bank GDP.csv"))
 ```
 
 ### Clean data
@@ -42,6 +43,8 @@ governance_indicators <- clean_names(governance_indicators) %>%
   rename(country=country_name)
 skylight_engagement_sessions <- clean_names(skylight_engagement_sessions) 
 #fish_indicators_clean <- clean_names(fish_indicators)
+wb_gdp_clean <- wb_gdp_raw %>% clean_names() %>% 
+  rename(country=country_name)
 
 weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name")
 
@@ -83,6 +86,30 @@ gov_id_long <- gov_id_estimates %>%
   pivot_wider(names_from = "series_name",
               values_from = "value") %>% 
   clean_names()
+
+### cleaning gdp data
+wb_gdp_clean$country <- countrycode(wb_gdp_clean$country, "country.name", "country.name")
+wb_gdp_df <- wb_gdp_clean %>% 
+  rename_all(~ gsub("x(\\d+)_yr\\1", "\\1", .)) %>% 
+  select(-series_name, -series_code, -country_code)
+
+wb_gdp_long <- wb_gdp_df %>% 
+  pivot_longer(cols = 2:13,
+               names_to = "year", 
+               values_to = "gdp") %>% 
+  mutate_all(~ ifelse(. == "..", NA, .)) %>%
+  na.omit() %>% 
+  filter(year > 2019)
+
+wb_gdp_long$gdp <- as.numeric(wb_gdp_long$gdp)
+
+
+wb_gdp_sum <- wb_gdp_long %>% 
+  group_by(country) %>% 
+  summarise_all(mean, na.rm=TRUE) %>% 
+  select(-year)  %>% 
+  filter(country %in% iuu_index_countries)
+
 
 ####cleaning fishing indicator data 
 
@@ -128,7 +155,7 @@ write.csv(fish_id_wide, "/Users/chloe/Desktop/IUU_Analysis/IUU_Index_Analysis/da
 
 ### Compile IUUFR Index data 
 ```{r}
-colnames(country_engagements_total)[1] = "country"
+#colnames(country_engagements_total)[1] = "country"
 iuu_index_countries <- c(unique(iuu_index_scores$country))
 skylight_countries <- c(unique(weekly_country_engagements$country))
 
@@ -193,7 +220,17 @@ wb_gov_index_df <- gov_id_long %>%
     by = join_by(country)) %>% 
   mutate(
     no_of_active_weeks = ifelse(is.na(no_of_active_weeks), 0, no_of_active_weeks),
-    sessions = ifelse(is.na(sessions), 0, sessions))
+    sessions = ifelse(is.na(sessions), 0, sessions)) %>% 
+  filter(year > 2019) %>% 
+  select(!country_code)
+
+wb_gov_index_df$year <- as.numeric(wb_gov_index_df$year)
+wb_gov_index_df$control_of_corruption_estimate <- as.numeric(wb_gov_index_df$control_of_corruption_estimate)
+wb_gov_index_df$government_effectiveness_estimate <- as.numeric(wb_gov_index_df$government_effectiveness_estimate)
+wb_gov_index_df$political_stability_and_absence_of_violence_terrorism_estimate <- as.numeric(wb_gov_index_df$political_stability_and_absence_of_violence_terrorism_estimate)
+wb_gov_index_df$regulatory_quality_estimate <- as.numeric(wb_gov_index_df$regulatory_quality_estimate)
+wb_gov_index_df$rule_of_law_estimate <- as.numeric(wb_gov_index_df$rule_of_law_estimate)
+wb_gov_index_df$voice_and_accountability_estimate <- as.numeric(wb_gov_index_df$voice_and_accountability_estimate)
 ```
 
 
@@ -210,13 +247,29 @@ fishing_skylight_df <- fish_id_wide %>%
   mutate(
     no_of_active_weeks = ifelse(is.na(no_of_active_weeks), 0, no_of_active_weeks),
     sessions = ifelse(is.na(sessions), 0, sessions)) %>% 
-  na.omit()
+  na.omit() %>% 
+  filter(year > 2019)
   
 ```
 
 ```{r}
 str(fishing_skylight_df)
 fishing_skylight_df$skylight_treatment <- as.factor(fishing_skylight_df$skylight_treatment )
+```
+
+
+
+```{r}
+# combine gov and fishing indicators
+all_index_df <- fishing_skylight_df %>% 
+  select(country, year, aquaculture_production_metric_tons, capture_fisheries_production_metric_tons, total_fisheries_production_metric_tons) %>%
+  full_join(wb_gov_index_df, by= join_by(year, country)) %>% 
+  group_by(country) %>% 
+  summarise_all(mean,na.rm = TRUE) %>% 
+  full_join(wb_gdp_sum, join_by(country)) %>% 
+  select(-year)
+
+all_index_df$skylight_treatment <- as.factor(all_index_df$skylight_treatment)
 ```
 
 
@@ -235,11 +288,52 @@ summary(skylight_analysis_1)
 #there is a way to interpret results in terms of odds, we could talk about this in presentation 
 
 ```{r}
-skylight_analysis_2 <- glm(skylight_treatment ~ aquaculture_production_metric_tons + capture_fisheries_production_metric_tons, data = fishing_skylight_df, family = binomial)
+skylight_analysis_2 <- glm(skylight_treatment ~ aquaculture_production_metric_tons + capture_fisheries_production_metric_tons, data = all_index_df, family = binomial)
 
 summary(skylight_analysis_2)
 ```
 
+
+# GLM 
+```{r}
+skylight_glm <- glm(skylight_treatment ~ 
+                      aquaculture_production_metric_tons +
+                      capture_fisheries_production_metric_tons +
+                      control_of_corruption_estimate +
+                      government_effectiveness_estimate +
+                      political_stability_and_absence_of_violence_terrorism_estimate+
+                      regulatory_quality_estimate +
+                      rule_of_law_estimate +
+                      voice_and_accountability_estimate, 
+                    data = all_index_df, family = binomial)
+
+summary(skylight_glm)
+```
+
+
+
+```{r}
+plot_box2 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=control_of_corruption_estimate)) +
+  geom_boxplot(aes(color = skylight_treatment))
+
+plot_box2
+```
+
+
+```{r}
+plot_box3 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=regulatory_quality_estimate)) +
+  geom_boxplot(aes(color = skylight_treatment))
+
+plot_box3
+```
+
+
+```{r}
+plot_box3 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=gdp)) +
+  geom_boxplot(aes(color = skylight_treatment))
+
+plot_box3
+```
 
 
 
