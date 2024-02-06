@@ -25,7 +25,8 @@ skylight_engagement_sessions <- read_csv("Metrics_Countries_Pivot_table-2.csv")
 indicator_scores <- read_csv("iuu_fishing_index_2019-2023_indicator_scores.csv")
 skylight_deals <- read_excel("updated deals.xlsx")
 governance_indicators <- read_csv(here("data", "governance_indicators.csv"))
-fish_indicators <- read_csv(here("data", "WDIData.csv"))
+#fish_indicators <- read_csv(here("data", "WDIData.csv"))
+fish_id_wide <- read_csv(here("data", "fish_indicators.csv"))
 ```
 
 ### Clean data
@@ -40,7 +41,7 @@ weekly_country_engagements <- clean_names(weekly_country_engagements)
 governance_indicators <- clean_names(governance_indicators) %>% 
   rename(country=country_name)
 skylight_engagement_sessions <- clean_names(skylight_engagement_sessions) 
-fish_indicators_clean <- clean_names(fish_indicators)
+#fish_indicators_clean <- clean_names(fish_indicators)
 
 weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name")
 
@@ -85,11 +86,17 @@ gov_id_long <- gov_id_estimates %>%
 
 ####cleaning fishing indicator data 
 
-fish_indicators_clean <- fish_indicators_clean %>% 
-  filter(indicator_name %in% c("Aquaculture production (metric tons)", "Capture fisheries production (metric tons)", "Fish species, threatened", "Total fisheries production (metric tons)")) 
+#fish_indicators_clean <- fish_indicators_clean %>% 
+ # filter(indicator_name %in% c("Aquaculture production (metric tons)", "Capture fisheries production (metric tons)", "Fish species, threatened", "Total fisheries production (metric tons)")) 
   
-fish_indicators_clean$country <- countrycode(fish_indicators_clean$country_name,"country.name", "country.name")
+#ish_indicators_clean$country <- countrycode(fish_indicators_clean$country_name,"country.name", "country.name")
 
+
+```
+
+
+dont run this 
+#```{r}
 fish_indicators_clean <- fish_indicators_clean %>% 
   filter(country %in% iuu_index_countries) %>% 
   select(-x1960:-x1995) %>% 
@@ -109,7 +116,15 @@ fish_id_wide <- fish_id_long %>%
               values_from = "value") %>% 
   clean_names() %>% 
    subset(select = -fish_species_threatened) 
-```
+#```
+
+##downloading the data:
+#```{r}
+write.csv(fish_id_wide, "/Users/chloe/Desktop/IUU_Analysis/IUU_Index_Analysis/data/fish_indicators.csv", row.names=FALSE)
+#```
+
+
+
 
 ### Compile IUUFR Index data 
 ```{r}
@@ -205,12 +220,29 @@ fishing_skylight_df$skylight_treatment <- as.factor(fishing_skylight_df$skylight
 ```
 
 
-### Linear Model 
+### Linear Models
+we should split up analysis by nonprofit and government, do we see a difference? 
+
+Skylight Analysis 1: skylight treatment = aquaculture production + capture fishery 
+  *** want to add ratio of capture fishery to aquaculutre and total percent of GDP that comes from fishing 
+
 ```{r}
 skylight_analysis_1 <- glm(skylight_treatment ~ aquaculture_production_metric_tons + capture_fisheries_production_metric_tons, data = fishing_skylight_df, family = binomial)
 
 summary(skylight_analysis_1)
 ```
+
+#there is a way to interpret results in terms of odds, we could talk about this in presentation 
+
+```{r}
+skylight_analysis_2 <- glm(skylight_treatment ~ aquaculture_production_metric_tons + capture_fisheries_production_metric_tons, data = fishing_skylight_df, family = binomial)
+
+summary(skylight_analysis_2)
+```
+
+
+
+
 
 ### we can look at a variable that is the ratio of aquaculture to capture fisheries 
 I also wonder if we could find data on the total percentage of GDP that comes from capture fisheries
