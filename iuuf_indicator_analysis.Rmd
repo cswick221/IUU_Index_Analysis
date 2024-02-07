@@ -221,7 +221,7 @@ wb_gov_index_df <- gov_id_long %>%
   mutate(
     no_of_active_weeks = ifelse(is.na(no_of_active_weeks), 0, no_of_active_weeks),
     sessions = ifelse(is.na(sessions), 0, sessions)) %>% 
-  filter(year > 2019) %>% 
+  filter(year > 2018) %>% 
   select(!country_code)
 
 wb_gov_index_df$year <- as.numeric(wb_gov_index_df$year)
@@ -248,7 +248,7 @@ fishing_skylight_df <- fish_id_wide %>%
     no_of_active_weeks = ifelse(is.na(no_of_active_weeks), 0, no_of_active_weeks),
     sessions = ifelse(is.na(sessions), 0, sessions)) %>% 
   na.omit() %>% 
-  filter(year > 2019)
+  filter(year > 2018)
   
 ```
 
@@ -267,18 +267,55 @@ all_index_df <- fishing_skylight_df %>%
   group_by(country) %>% 
   summarise_all(mean,na.rm = TRUE) %>% 
   full_join(wb_gdp_sum, join_by(country)) %>% 
-  select(-year)
+  select(-year) %>% 
+  filter(country != "Montenegro")
 
 all_index_df$skylight_treatment <- as.factor(all_index_df$skylight_treatment)
 ```
 
+
+```{r}
+##compiling IUU index 
+iuu_final_final <- iuu_index_final_df %>% 
+  filter(index_year < "2023") %>% 
+  select(country, indicator_id, score, index_year, skylight_treatment, no_of_active_weeks) %>% 
+ pivot_wider(names_from = "indicator_id", 
+             values_from = "score") %>% 
+    select_if(~ !any(is.na(.))) %>% #removes indicators that have NA values b/c regression no likey 
+  group_by(country) %>%
+  select(-country, index_year, skylight_treatment) %>%  # Exclude non-numeric column if necessary
+  summarise_all(mean, na.rm = TRUE) %>% 
+  select(-index_year) %>% 
+  clean_names()
+  
+```
+
+```{r}
+
+iuu_final_final$skylight_treatment <- as.factor(iuu_final_final$skylight_treatment )
+str(iuu_final_final)
+```
 
 ### Linear Models
 we should split up analysis by nonprofit and government, do we see a difference? 
 
 Skylight Analysis 1: skylight treatment = aquaculture production + capture fishery 
   *** want to add ratio of capture fishery to aquaculutre and total percent of GDP that comes from fishing 
+  
+```{r}
+skylight_iuu_1 <- glm(skylight_treatment ~ x29 + x3 + x4 + x5 + x10 + x12 + x14, data = iuu_final_final, family = binomial)
 
+summary(skylight_iuu_1)
+```
+
+
+```{r}
+skylight_iuu_2 <- glm(skylight_treatment ~ x4 + x10 + x14, data = iuu_final_final, family = binomial)
+
+summary(skylight_iuu_2)
+```
+
+  
 ```{r}
 skylight_analysis_1 <- glm(skylight_treatment ~ aquaculture_production_metric_tons + capture_fisheries_production_metric_tons, data = fishing_skylight_df, family = binomial)
 
@@ -295,8 +332,10 @@ summary(skylight_analysis_2)
 
 
 # GLM 
-```{r}
-skylight_glm <- glm(skylight_treatment ~ 
+
+```{r} 
+#w/o gdp
+skylight_glm1 <- glm(skylight_treatment ~ 
                       aquaculture_production_metric_tons +
                       capture_fisheries_production_metric_tons +
                       control_of_corruption_estimate +
@@ -307,7 +346,35 @@ skylight_glm <- glm(skylight_treatment ~
                       voice_and_accountability_estimate, 
                     data = all_index_df, family = binomial)
 
-summary(skylight_glm)
+summary(skylight_glm1)
+```
+
+```{r}
+#w/gdp
+skylight_glm2 <- glm(skylight_treatment ~ 
+                      aquaculture_production_metric_tons +
+                      capture_fisheries_production_metric_tons +
+                      control_of_corruption_estimate +
+                      government_effectiveness_estimate +
+                      political_stability_and_absence_of_violence_terrorism_estimate+
+                      regulatory_quality_estimate +
+                      rule_of_law_estimate + gdp +
+                      voice_and_accountability_estimate, 
+                    data = all_index_df, family = binomial)
+
+summary(skylight_glm2)
+```
+
+```{r}
+#reduced to significant & significant ish 
+skylight_glm3 <- glm(skylight_treatment ~ 
+                      capture_fisheries_production_metric_tons +
+                      control_of_corruption_estimate +
+                      regulatory_quality_estimate +
+                      voice_and_accountability_estimate, 
+                    data = all_index_df, family = binomial)
+
+summary(skylight_glm3)
 ```
 
 
@@ -336,6 +403,31 @@ plot_box3
 ```
 
 
+```{r}
+#volume of catches
+plot_box4 <- ggplot(data = iuu_final_final, aes(x=skylight_treatment, y=x29)) +
+  geom_boxplot(aes(color = skylight_treatment))
+
+plot_box4
+```
+
+
+```{r}
+#EEZ size 
+plot_box5 <- ggplot(data = iuu_final_final, aes(x=skylight_treatment, y=x10)) +
+  geom_boxplot(aes(color = skylight_treatment))
+
+plot_box5
+```
+
+
+```{r}
+#MSC certified fisheries 
+plot_box5 <- ggplot(data = iuu_final_final, aes(x=skylight_treatment, y=x14)) +
+  geom_boxplot(aes(color = skylight_treatment))
+
+plot_box5
+```
 
 
 ### we can look at a variable that is the ratio of aquaculture to capture fisheries 

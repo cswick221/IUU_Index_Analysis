@@ -5,26 +5,45 @@ date: "2024-02-06"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+```{r setup, echo = TRUE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(here)
+library(broom)
+
+# Spatial data packages
+library(sf) # sf is simple features 
+library(tmap)
+library(rnaturalearth) # geographic data, change returnclass to sf 
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+merged_data <- merge(world, active_country_dates_clean, by.x = "name_long", by.y = "country")
+
+ggplot() +
+  geom_sf(data = world, fill = "lightgrey", color = "white") +
+  geom_sf(data = merged_data, aes(fill = "blue"), color = "white") +
+ scale_fill_manual(values = c("blue" = "blue", "lightgrey" = "lightgrey"), guide = "none") +
+  theme_void()
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+
+
+
+
+
+
+
