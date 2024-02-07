@@ -271,6 +271,8 @@ all_index_df <- fishing_skylight_df %>%
   select(-year) %>% 
   filter(country != "Montenegro")
 
+all_index_df$ratio_capture <- all_index_df$aquaculture_production_metric_tons/all_index_df$capture_fisheries_production_metric_tons
+
 all_index_df$skylight_treatment <- as.factor(all_index_df$skylight_treatment)
 ```
 
@@ -344,6 +346,7 @@ skylight_glm1 <- glm(skylight_treatment ~
                       political_stability_and_absence_of_violence_terrorism_estimate+
                       regulatory_quality_estimate +
                       rule_of_law_estimate +
+                       ratio_capture +
                       voice_and_accountability_estimate, 
                     data = all_index_df, family = binomial)
 
@@ -369,9 +372,9 @@ summary(skylight_glm2)
 ```{r}
 #reduced to significant & significant ish 
 skylight_glm3 <- glm(skylight_treatment ~ 
-                      capture_fisheries_production_metric_tons +
                       control_of_corruption_estimate +
                       regulatory_quality_estimate +
+                       ratio_capture+
                       voice_and_accountability_estimate, 
                     data = all_index_df, family = binomial)
 
@@ -389,8 +392,20 @@ plot_box2
 
 
 ```{r}
-plot_box3 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=regulatory_quality_estimate)) +
-  geom_boxplot(aes(color = skylight_treatment))
+ggplot(data = all_index_df, aes(x=skylight_treatment, y=ratio_capture)) +
+  geom_violin(aes(color = skylight_treatment))
+
+```
+
+```{r}
+ggplot(data = all_index_df, aes(x=skylight_treatment, y=control_of_corruption_estimate)) +
+  geom_violin(aes(color = skylight_treatment))
+
+```
+
+```{r}
+plot_box3 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=voice_and_accountability_estimate)) +
+  geom_violin(aes(color = skylight_treatment))
 
 plot_box3
 ```
@@ -422,6 +437,17 @@ plot_box5
 ```
 
 
+
+
+```{r}
+#EEZ size violin 
+ggplot(data = iuu_final_final, aes(x=skylight_treatment, y=x10)) +
+  geom_violin(aes(color = skylight_treatment))
+
+
+```
+
+
 ```{r}
 #MSC certified fisheries 
 plot_box5 <- ggplot(data = iuu_final_final, aes(x=skylight_treatment, y=x14)) +
@@ -429,6 +455,12 @@ plot_box5 <- ggplot(data = iuu_final_final, aes(x=skylight_treatment, y=x14)) +
 
 plot_box5
 ```
+
+```{r}
+ggplot(data = all_index_df, aes(x=skylight_treatment, y = capture_fisheries_production_metric_tons)) +
+  geom_violin(aes(color = skylight_treatment))
+```
+
 
 
 ```{r}
