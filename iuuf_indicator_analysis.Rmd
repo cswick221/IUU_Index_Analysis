@@ -15,6 +15,7 @@ library(countrycode)
 library(broom)
 library(here)
 library(tidyr)
+library(jtools)
 ```
 
 ### Load data 
@@ -427,6 +428,14 @@ plot_box5 <- ggplot(data = iuu_final_final, aes(x=skylight_treatment, y=x14)) +
   geom_boxplot(aes(color = skylight_treatment))
 
 plot_box5
+```
+
+
+```{r}
+effect_plot(skylight_glm3,
+            voice_and_accountability_estimate,
+            interval = TRUE,
+            y.label = "Probability")
 ```
 
 
