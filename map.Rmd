@@ -23,15 +23,24 @@ library(rnaturalearth) # geographic data, change returnclass to sf
 
 
 ```{r}
-world <- ne_countries(scale = "medium", returnclass = "sf")
+#world <- ne_countries(scale = "medium", returnclass = "sf")
 
 merged_data <- merge(world, active_country_dates_clean, by.x = "name_long", by.y = "country")
 
-ggplot() +
-  geom_sf(data = world, fill = "lightgrey", color = "white") +
-  geom_sf(data = merged_data, aes(fill = "blue"), color = "white") +
- scale_fill_manual(values = c("blue" = "blue", "lightgrey" = "lightgrey"), guide = "none") +
-  theme_void()
+my_plot <- ggplot() +
+  geom_sf(data = world, fill = "antiquewhite2", color = "seashell1") +
+  geom_sf(data = merged_data, aes(fill = "cornflowerblue"), color = "seashell1") +
+ scale_fill_manual(values = c("cornflowerblue" = "cornflowerblue", "antiquewhite2" = "antiquewhite2"), guide = "none") +
+ theme(legend.background = element_rect(fill = "transparent"), 
+        legend.box.background = element_rect(fill = "transparent"), 
+        panel.background = element_rect(fill = "transparent"), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        plot.background = element_rect(fill = "transparent", 
+                                       color = NA)) 
+
+ggsave(my_plot, filename = "output.png", bg = "transparent")
+
 ```
 
 
