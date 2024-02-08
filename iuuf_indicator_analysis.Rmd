@@ -16,6 +16,7 @@ library(broom)
 library(here)
 library(tidyr)
 library(jtools)
+library(caret)
 ```
 
 ### Load data 
@@ -352,6 +353,31 @@ skylight_glm1 <- glm(skylight_treatment ~
 
 summary(skylight_glm1)
 ```
+
+```{r}
+prediction <- predict(skylight_glm1, all_index_df)
+
+# Ensure that both prediction and actual values are factors with the same levels
+prediction <- factor(ifelse(prediction > 0.5, "1", "0"))
+actual <- all_index_df$skylight_treatment
+
+# Create confusion matrix
+confusion_matrix <- table(Predicted = prediction, Actual = actual)
+
+# Calculate accuracy
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+
+# Display confusion matrix and accuracy
+print(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
+
+```
+
+
+```{r}
+confusionMatrix(data=skylight_glm1, all_index_df)
+```
+
 
 ```{r}
 #w/gdp
