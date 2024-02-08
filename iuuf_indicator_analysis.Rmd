@@ -50,10 +50,20 @@ skylight_engagement_sessions <- clean_names(skylight_engagement_sessions)
 wb_gdp_clean <- wb_gdp_raw %>% clean_names() %>% 
   rename(country=country_name)
 
-weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name")
+weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name") 
+
+weekly_country_engagements$no_of_active_weeks <- as.numeric(weekly_country_engagements$no_of_active_weeks)
+
+#filter for only engaged countries
+weekly_country_engagements <- weekly_country_engagements%>% 
+  filter(no_of_active_weeks >2) 
+
+#list of active skylight countries 
+active_skylight_countries <- weekly_country_engagements$country 
 
 iuu_index_scores$country[iuu_index_scores$country == "Micronesia (FS of)"] <- "Federated States of Micronesia"
 iuu_index_scores$country <- countrycode(iuu_index_scores$country, "country.name", "country.name")
+
 
 skylight_deals$deal_country[skylight_deals$deal_country == "Micronesia"] <- "Federated States of Micronesia"
 
@@ -68,6 +78,27 @@ country_sessions <- country_sessions %>%
   drop_na(country) %>% 
   group_by(country) %>%
   summarize(sessions = sum(sessions, na.rm = TRUE))
+
+
+###IUUFR Data
+
+#colnames(country_engagements_total)[1] = "country"
+iuu_index_countries <- c(unique(iuu_index_scores$country))
+#skylight_countries <- c(unique(weekly_country_engagements$country))
+
+# Get unique values from both vectors
+all_values <- unique(c(iuu_index_countries, active_skylight_countries))
+
+# Create a data frame with NAs
+common_countries_df <- data.frame(country = all_values, iuu_index_countries = NA, active_skylight_countries = NA)
+
+# Fill in values in the data frame based on the presence in vectors
+common_countries_df$iuu_index_countries[match(iuu_index_countries, common_countries_df$country)] <- iuu_index_countries
+common_countries_df$active_skylight_countries[match(active_skylight_countries, common_countries_df$country)] <- active_skylight_countries
+
+common_countries_df$skylight_treatment <- ifelse(is.na(common_countries_df$active_skylight_countries), 0, 1)
+
+
 
 
 #####cleaning governance indicator data 
@@ -103,7 +134,7 @@ wb_gdp_long <- wb_gdp_df %>%
                values_to = "gdp") %>% 
   mutate_all(~ ifelse(. == "..", NA, .)) %>%
   na.omit() %>% 
-  filter(year > 2019)
+  filter(year > 2017)
 
 wb_gdp_long$gdp <- as.numeric(wb_gdp_long$gdp)
 
@@ -127,10 +158,10 @@ wb_gdp_sum <- wb_gdp_long %>%
 
 
 dont run this 
-#```{r}
+```{r}
 fish_indicators_clean <- fish_indicators_clean %>% 
   filter(country %in% iuu_index_countries) %>% 
-  select(-x1960:-x1995) %>% 
+  select(-x1960:-x2017) %>% 
   select(-x2022, -x68)
 
 fish_indicators_clean <- fish_indicators_clean %>%
@@ -156,27 +187,6 @@ write.csv(fish_id_wide, "/Users/chloe/Desktop/IUU_Analysis/IUU_Index_Analysis/da
 
 
 
-
-### Compile IUUFR Index data 
-```{r}
-#colnames(country_engagements_total)[1] = "country"
-iuu_index_countries <- c(unique(iuu_index_scores$country))
-skylight_countries <- c(unique(weekly_country_engagements$country))
-
-# Get unique values from both vectors
-all_values <- unique(c(iuu_index_countries, skylight_countries))
-
-# Create a data frame with NAs
-common_countries_df <- data.frame(country = all_values, iuu_index_countries = NA, skylight_countries = NA)
-
-# Fill in values in the data frame based on the presence in vectors
-common_countries_df$iuu_index_countries[match(iuu_index_countries, common_countries_df$country)] <- iuu_index_countries
-common_countries_df$skylight_countries[match(skylight_countries, common_countries_df$country)] <- skylight_countries
-
-common_countries_df$skylight_treatment <- ifelse(is.na(common_countries_df$skylight_countries), 0, 1)
-```
-
-
 ```{r}
 iuu_index_df <- iuu_index_scores %>% 
   full_join(common_countries_df, by = join_by(country)) %>%
@@ -200,7 +210,7 @@ active_country_dates_clean <- active_country_dates_df %>%
 
 iuu_index_final_df <- iuu_index_df %>% 
   left_join(active_country_dates_clean, 
-            by = c("skylight_countries" = "country")) %>% 
+            by = c("active_skylight_countries" = "country")) %>% 
   rename(index_year = year) %>% 
   filter(!(skylight_treatment == 1 & is.na(treatment_year))) #removing skylight countries without deal date 
 
@@ -225,8 +235,10 @@ wb_gov_index_df <- gov_id_long %>%
   mutate(
     no_of_active_weeks = ifelse(is.na(no_of_active_weeks), 0, no_of_active_weeks),
     sessions = ifelse(is.na(sessions), 0, sessions)) %>% 
-  filter(year > 2018) %>% 
-  select(!country_code)
+  filter(year > 2017) %>% 
+  select(!country_code) %>% 
+  na.omit()
+  
 
 wb_gov_index_df$year <- as.numeric(wb_gov_index_df$year)
 wb_gov_index_df$control_of_corruption_estimate <- as.numeric(wb_gov_index_df$control_of_corruption_estimate)
@@ -252,7 +264,7 @@ fishing_skylight_df <- fish_id_wide %>%
     no_of_active_weeks = ifelse(is.na(no_of_active_weeks), 0, no_of_active_weeks),
     sessions = ifelse(is.na(sessions), 0, sessions)) %>% 
   na.omit() %>% 
-  filter(year > 2018)
+  filter(year > 2017)
   
 ```
 
@@ -268,10 +280,9 @@ fishing_skylight_df$skylight_treatment <- as.factor(fishing_skylight_df$skylight
 all_index_df <- fishing_skylight_df %>% 
   select(country, year, aquaculture_production_metric_tons, capture_fisheries_production_metric_tons, total_fisheries_production_metric_tons) %>%
   full_join(wb_gov_index_df, by= join_by(year, country)) %>% 
-  group_by(country) %>% 
-  summarise_all(mean,na.rm = TRUE) %>% 
+  #group_by(country) %>% 
+  #summarise_all(mean,na.rm = TRUE) %>% 
   full_join(wb_gdp_sum, join_by(country)) %>% 
-  select(-year) %>% 
   filter(country != "Montenegro")
 
 all_index_df$ratio_capture <- all_index_df$aquaculture_production_metric_tons/all_index_df$capture_fisheries_production_metric_tons
@@ -288,9 +299,9 @@ iuu_final_final <- iuu_index_final_df %>%
  pivot_wider(names_from = "indicator_id", 
              values_from = "score") %>% 
     select_if(~ !any(is.na(.))) %>% #removes indicators that have NA values b/c regression no likey 
-  group_by(country) %>%
-  select(-country, index_year, skylight_treatment) %>%  # Exclude non-numeric column if necessary
-  summarise_all(mean, na.rm = TRUE) %>% 
+  #group_by(country) %>%
+  #select(-country, index_year, skylight_treatment) %>%  # Exclude non-numeric column if necessary
+  #summarise_all(mean, na.rm = TRUE) %>% 
   select(-index_year) %>% 
   clean_names()
   
