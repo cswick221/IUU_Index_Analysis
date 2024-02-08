@@ -17,6 +17,8 @@ library(here)
 library(tidyr)
 library(jtools)
 library(caret)
+library(AICcmodavg) 
+library(equatiomatic)
 ```
 
 ### Load data 
@@ -339,7 +341,7 @@ summary(skylight_analysis_2)
 
 ```{r} 
 #w/o gdp
-skylight_glm1 <- glm(skylight_treatment ~ 
+f1 = skylight_treatment ~ 
                       aquaculture_production_metric_tons +
                       capture_fisheries_production_metric_tons +
                       control_of_corruption_estimate +
@@ -348,11 +350,40 @@ skylight_glm1 <- glm(skylight_treatment ~
                       regulatory_quality_estimate +
                       rule_of_law_estimate +
                        ratio_capture +
-                      voice_and_accountability_estimate, 
-                    data = all_index_df, family = binomial)
+                      voice_and_accountability_estimate
 
-summary(skylight_glm1)
+skylight_glm1 <- glm(f1, data = all_index_df, family = binomial)
+
+#w/gdp
+f2 = skylight_treatment ~ 
+                      aquaculture_production_metric_tons +
+                      capture_fisheries_production_metric_tons +
+                      control_of_corruption_estimate +
+                      government_effectiveness_estimate +
+                      political_stability_and_absence_of_violence_terrorism_estimate+
+                      regulatory_quality_estimate +
+                      rule_of_law_estimate + gdp +
+                      voice_and_accountability_estimate
+
+skylight_glm2 <- glm(f2, data = all_index_df, family = binomial)
+
+#reduced to significant & significant ish 
+f3 = skylight_treatment ~ 
+                      control_of_corruption_estimate +
+                      regulatory_quality_estimate +
+                       ratio_capture+
+                      voice_and_accountability_estimate
+
+skylight_glm3 <- glm(f3,data = all_index_df, family = binomial)
+
+aictab(list(skylight_glm1, skylight_glm2, skylight_glm3)) #model 3 is best
+
+bictab(list(skylight_glm1, skylight_glm2, skylight_glm3)) #model 3 is best
+
 ```
+
+
+
 
 ```{r}
 prediction <- predict(skylight_glm1, all_index_df)
@@ -376,35 +407,6 @@ cat("Accuracy:", accuracy, "\n")
 
 ```{r}
 confusionMatrix(data=skylight_glm1, all_index_df)
-```
-
-
-```{r}
-#w/gdp
-skylight_glm2 <- glm(skylight_treatment ~ 
-                      aquaculture_production_metric_tons +
-                      capture_fisheries_production_metric_tons +
-                      control_of_corruption_estimate +
-                      government_effectiveness_estimate +
-                      political_stability_and_absence_of_violence_terrorism_estimate+
-                      regulatory_quality_estimate +
-                      rule_of_law_estimate + gdp +
-                      voice_and_accountability_estimate, 
-                    data = all_index_df, family = binomial)
-
-summary(skylight_glm2)
-```
-
-```{r}
-#reduced to significant & significant ish 
-skylight_glm3 <- glm(skylight_treatment ~ 
-                      control_of_corruption_estimate +
-                      regulatory_quality_estimate +
-                       ratio_capture+
-                      voice_and_accountability_estimate, 
-                    data = all_index_df, family = binomial)
-
-summary(skylight_glm3)
 ```
 
 
