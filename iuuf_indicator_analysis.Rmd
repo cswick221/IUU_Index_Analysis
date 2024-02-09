@@ -158,7 +158,7 @@ wb_gdp_sum <- wb_gdp_long %>%
 
 
 dont run this 
-```{r}
+#```{r}
 fish_indicators_clean <- fish_indicators_clean %>% 
   filter(country %in% iuu_index_countries) %>% 
   select(-x1960:-x2017) %>% 
@@ -188,6 +188,7 @@ write.csv(fish_id_wide, "/Users/chloe/Desktop/IUU_Analysis/IUU_Index_Analysis/da
 
 
 ```{r}
+
 iuu_index_df <- iuu_index_scores %>% 
   full_join(common_countries_df, by = join_by(country)) %>%
   full_join(weekly_country_engagements, by = join_by(country))
@@ -269,7 +270,7 @@ fishing_skylight_df <- fish_id_wide %>%
 ```
 
 ```{r}
-str(fishing_skylight_df)
+#str(fishing_skylight_df)
 fishing_skylight_df$skylight_treatment <- as.factor(fishing_skylight_df$skylight_treatment )
 ```
 
@@ -310,7 +311,7 @@ iuu_final_final <- iuu_index_final_df %>%
 ```{r}
 
 iuu_final_final$skylight_treatment <- as.factor(iuu_final_final$skylight_treatment )
-str(iuu_final_final)
+#str(iuu_final_final)
 ```
 
 ### Linear Models
@@ -394,10 +395,23 @@ bictab(list(skylight_glm1, skylight_glm2, skylight_glm3)) #model 3 is best
 ```
 
 
+```{r}
+summary(skylight_glm3)
+summary(skylight_glm2)
+summary(skylight_glm1)
+```
 
 
 ```{r}
-prediction <- predict(skylight_glm1, all_index_df)
+skylight_analysis_final <- glm(skylight_treatment ~ control_of_corruption_estimate + ratio_capture + voice_and_accountability_estimate, data = all_index_df, family = binomial)
+
+summary(skylight_analysis_final)
+```
+
+
+
+```{r}
+prediction <- predict(skylight_analysis_final, all_index_df)
 
 # Ensure that both prediction and actual values are factors with the same levels
 prediction <- factor(ifelse(prediction > 0.5, "1", "0"))
@@ -423,10 +437,32 @@ confusionMatrix(data=skylight_glm1, all_index_df)
 
 
 ```{r}
-plot_box2 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=control_of_corruption_estimate)) +
-  geom_boxplot(aes(color = skylight_treatment))
+plot_final1 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=control_of_corruption_estimate)) +
+  geom_boxplot(aes(color = skylight_treatment)) +
+  scale_color_manual(values = c("0" = "#336e94ff", "1" = "#0097a7ff")) +
+  labs(x = "Skylight Use (0 = no, 1 = yes)", y = "Control of Corruption Estimate") +
+  theme_minimal()
 
-plot_box2
+plot_final2 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=ratio_capture)) +
+  geom_boxplot(aes(color = skylight_treatment))+
+  scale_color_manual(values = c("0" = "#336e94ff", "1" = "#0097a7ff"))+
+   labs(x = "Skylight Use (0 = no, 1 = yes)", y = "Aquaculture/Capture Production") +
+  theme_minimal()
+
+plot_final3 <- ggplot(data = all_index_df, aes(x=skylight_treatment, y=voice_and_accountability_estimate)) +
+  geom_boxplot(aes(color = skylight_treatment))+
+  scale_color_manual(values = c("0" = "#336e94ff", "1" = "#0097a7ff"))+
+   labs(x = "Skylight Use (0 = no, 1 = yes)", y = "Voice and Accountability Estimates") +
+  theme_minimal()
+
+plot_final1 
+plot_final2
+plot_final3
+
+ggsave(plot_final1 , filename = "corruption_box.png", bg = "transparent")
+ggsave(plot_final2, filename = "fishing_box.png", bg = "transparent")
+ggsave(plot_final3, filename = "accountability_box.png", bg = "transparent")
+
 ```
 
 
