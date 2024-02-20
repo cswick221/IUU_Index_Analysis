@@ -16,21 +16,71 @@ library(broom)
 library(sf) # sf is simple features 
 library(tmap)
 library(rnaturalearth) # geographic data, change returnclass to sf 
+library(ggpattern)
+library(countrycode)
 ```
 
 
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
 
+active_countries <- read_csv("Skylight Program Metrics_Countries_Table.csv")
+
+merged_data <- merge(world, active_countries, by.x = "name_long", by.y = "Country")
+
+
+```
 
 
 ```{r}
-#world <- ne_countries(scale = "medium", returnclass = "sf")
+top_iuu_countries <- c("China", "Russia", "Yemen", "India", "Iran", "Indonesia", "Taiwan", "Comoros", "South Korea", "Ukraine" )
 
-merged_data <- merge(world, active_country_dates_clean, by.x = "name_long", by.y = "country")
+world$highlight <- ifelse(world$iso_a3 %in% top_iuu_countries, 1, 0)
+```
+
+```{r}
+highlighted_countries <- c("China", "Russia", "Yemen", "India", "Iran", "Indonesia", "Taiwan", "Comoros", "South Korea", "Ukraine")
+
+# Convert country names to ISO A3 codes
+iso_a3_codes <- countrycode(sourcevar = highlighted_countries,
+                            origin = "country.name",
+                            destination = "iso3c",
+                            warn = FALSE)
+
+# Load world map data
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# Create a new layer with red outlines for highlighted countries
+highlight_layer <- geom_sf(data = world[world$iso_a3 %in% iso_a3_codes, ], 
+                            fill = "transparent", color = "darkred", size = 1)
+
+# Combine the layers
+my_plot <- ggplot() +
+  geom_sf(data = world, fill = "antiquewhite2", color = "seashell1") +
+  geom_sf(data = merged_data, aes(fill = "#336e94"), color = "seashell1") +
+  scale_fill_manual(values = c("#336e94" = "#336e94", "#336e94" = "#336e94"), guide = "none") +
+  highlight_layer +
+  theme(legend.background = element_rect(fill = "transparent"), 
+        legend.box.background = element_rect(fill = "transparent"), 
+        panel.background = element_rect(fill = "transparent"), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        plot.background = element_rect(fill = "transparent", 
+                                       color = NA)) 
+
+print(my_plot)
+
+ggsave(my_plot, filename = "output.png", bg = "transparent")
+```
+
+
+```{r}
 
 my_plot <- ggplot() +
   geom_sf(data = world, fill = "antiquewhite2", color = "seashell1") +
   geom_sf(data = merged_data, aes(fill = "cornflowerblue"), color = "seashell1") +
  scale_fill_manual(values = c("cornflowerblue" = "cornflowerblue", "antiquewhite2" = "antiquewhite2"), guide = "none") +
+  geom_sf()
  theme(legend.background = element_rect(fill = "transparent"), 
         legend.box.background = element_rect(fill = "transparent"), 
         panel.background = element_rect(fill = "transparent"), 
@@ -38,6 +88,7 @@ my_plot <- ggplot() +
         panel.grid.minor = element_blank(), 
         plot.background = element_rect(fill = "transparent", 
                                        color = NA)) 
+my_plot
 
 ggsave(my_plot, filename = "output.png", bg = "transparent")
 
