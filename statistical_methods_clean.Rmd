@@ -31,6 +31,7 @@ filter_year <- 2019 #to update across all dataframes
 ### Functions
 ```{r}
 # Define function to replace NAs with the most recent non-NA value within each group (country)
+# For IUUFR dataset 
 fill_na_last_non_na <- function(x) {
   if (any(!is.na(x))) {
     na.locf(x, na.rm = FALSE, fromLast = TRUE)
@@ -266,6 +267,7 @@ skylight_df_final <- skylight_treatment_df %>%
 
 skylight_df_final[is.na(skylight_df_final)] <- 0
 
+skylight_df_final$skylight_treatment <- as.factor(skylight_df_final$skylight_treatment)
 
 ```
 
@@ -349,6 +351,40 @@ kmeans_result <- kmeans(scaled_all_index_df[, 6:48], centers = k)
 print(kmeans_result$centers)
 ```
 
+
+
+### T-test
+
+```{r}
+t_test_results <- data.frame(Indicator = numeric(), 
+                              Mean_Group_0 = numeric(), 
+                              Mean_Group_1 = numeric(), 
+                              p_value = numeric(),
+                              stringsAsFactors = FALSE)
+
+# Iterate over each indicator column
+for (col in names(scaled_all_index_df)[6:49]) {
+  # Perform two-sample t-test for the indicator column
+  t_test <- t.test(scaled_all_index_df[[col]][scaled_all_index_df$skylight_treatment == 0], 
+                   scaled_all_index_df[[col]][scaled_all_index_df$skylight_treatment == 1])
+  
+  # Store the results in the dataframe
+  t_test_results <- rbind(t_test_results, 
+                          data.frame(Indicator = col, 
+                                     Mean_Group_0 = mean(scaled_all_index_df[[col]][scaled_all_index_df$skylight_treatment == 0]), 
+                                     Mean_Group_1 = mean(scaled_all_index_df[[col]][scaled_all_index_df$skylight_treatment == 1]), 
+                                     p_value = t_test$p.value))
+}
+
+
+```
+
+```{r}
+t_test_result <- t.test(scaled_all_index_df$government_effectiveness_estimate[scaled_all_index_df$skylight_treatment == 0], 
+                        scaled_all_index_df$government_effectiveness_estimate[scaled_all_index_df$skylight_treatment == 1])
+
+t_test_result
+```
 
 
 
