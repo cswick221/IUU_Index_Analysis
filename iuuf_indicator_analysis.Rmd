@@ -23,11 +23,11 @@ library(equatiomatic)
 
 ### Load data 
 ```{r}
-organization_engagements <- read_csv("Skylight Program Metrics_Organizations_Table.csv")
-weekly_country_engagements <- read_csv("Skylight Program Metrics_Countries_Table.csv")
-skylight_engagement_sessions <- read_csv("Metrics_Countries_Pivot_table-2.csv")
-indicator_scores <- read_csv("iuu_fishing_index_2019-2023_indicator_scores.csv")
-skylight_deals <- read_excel("updated deals.xlsx")
+organization_engagements <- read_csv(here("data", "Skylight Program Metrics_Organizations_Table.csv"))
+weekly_country_engagements <- read_csv(here("data", "Skylight Program Metrics_Countries_Table.csv"))
+skylight_engagement_sessions <- read_csv(here("data","Metrics_Countries_Pivot_table-2.csv"))
+indicator_scores <- read_csv(here("data","iuu_fishing_index_2019-2023_indicator_scores.csv"))
+skylight_deals <- read_excel(here("data","updated deals.xlsx"))
 governance_indicators <- read_csv(here("data", "governance_indicators.csv"))
 #fish_indicators <- read_csv(here("data", "WDIData.csv"))
 fish_id_wide <- read_csv(here("data", "fish_indicators.csv"))
@@ -534,6 +534,51 @@ plot_box5
 ```{r}
 ggplot(data = all_index_df, aes(x=skylight_treatment, y = capture_fisheries_production_metric_tons)) +
   geom_violin(aes(color = skylight_treatment))
+```
+
+```{r}
+y_prob <- predict(skylight_analysis_final, newdata = all_index_df, type = 'response')
+all_index_df$y_prob <- y_prob
+
+ggplot(all_index_df, aes(x=control_of_corruption_estimate, y=skylight_treatment)) + geom_point() +
+     geom_smooth(method = "glm", color = "green", se = TRUE, 
+              method.args = list(family = "binomial"), formula = y ~ poly(x, 2))
+```
+
+
+```{r}
+# Load the pROC package
+install.packages("pROC")
+library(pROC)
+
+# Get predicted probabilities
+y_prob <- predict(skylight_analysis_final, newdata = all_index_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(all_index_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+```
+
+```{r}
+y_prob <- predict(skylight_analysis_final, newdata = all_index_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(all_index_df$skylight_treatment, y_prob)
+
+# Plot the ROC curve
+plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
+
+# Add diagonal reference line for random guessing
+abline(a = 0, b = 1, col = "red", lty = 2)
+
+# Calculate and print AUC
+auc_value <- auc(roc_curve)
+print(paste("AUC:", auc_value))
 ```
 
 

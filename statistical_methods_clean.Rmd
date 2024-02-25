@@ -368,7 +368,7 @@ filtered_scaled_all_index_df_2 <- filtered_scaled_all_index_df %>%
 
 
 
-
+## Variance Inflation Factor
 ```{r}
 # Subset the data to include only the relevant columns
 subset_data <- filtered_scaled_all_index_df_2[, 5:43]
