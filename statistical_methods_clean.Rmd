@@ -182,19 +182,19 @@ wb_gdp_df <- read_csv(here("data", "World Bank GDP 2.csv")) %>%
 
 wb_gdp_df$country <- countrycode(wb_gdp_df$country, "country.name", "country.name")
 
-wb_gdp_long <- wb_gdp_df %>% 
+wb_gdp_final <- wb_gdp_df %>% 
   pivot_longer(cols = 2:64,
                names_to = "year", 
-               values_to = "gdp") %>% 
-  na.omit() %>% 
-  filter(year > filter_year) %>% 
-  filter(country %in% iuu_index_countries)
+               values_to = "gdp") %>%
+  group_by(country) %>%
+  filter(!is.na(gdp)) %>%
+  slice_max(order_by = year, n = 1) %>%
+  ungroup() %>%
+  distinct(country, .keep_all = TRUE) %>% 
+  filter(country %in% iuu_index_countries) %>% 
+  select(-year)
 
-# get the mean gdp for each country 
-wb_gdp_final <- wb_gdp_long %>% 
-  group_by(country) %>% 
-  summarise_all(mean, na.rm=TRUE) %>% 
-  select(-year)  
+ 
 ```
 
 
@@ -209,12 +209,13 @@ wb_gdp_pc_final <- wb_gdp_pc %>%
   pivot_longer(cols = 2:64,
                names_to = "year", 
                values_to = "gdp_per_capita") %>% 
-  na.omit() %>% 
-  filter(year > filter_year) %>% 
+  group_by(country) %>%
+  filter(!is.na(gdp_per_capita)) %>%
+  slice_max(order_by = year, n = 1) %>%
+  ungroup() %>%
+  distinct(country, .keep_all = TRUE) %>% 
   filter(country %in% iuu_index_countries) %>% 
-  group_by(country) %>% 
-  summarise_all(mean, na.rm=TRUE) %>% 
-  select(-year) 
+  select(-year)
 
 ```
 
@@ -291,7 +292,7 @@ skylight_df_final$skylight_treatment <- as.factor(skylight_df_final$skylight_tre
 ```{r}
 ### Compile IUUFR with governance indicators
 countries_to_exclude <- 
-  c("Montenegro", "Cook Islands", "Falkland Islands", "Pitcairn Islands", "Réunion", "Antarctica")
+  c("Montenegro", "Cook Islands", "Falkland Islands", "Pitcairn Islands", "Réunion", "Antarctica", "North Korea", "Taiwan")
 
 all_index_df <- skylight_df_final %>% 
   full_join(gov_index_final, join_by(country)) %>% 
@@ -300,6 +301,8 @@ all_index_df <- skylight_df_final %>%
   full_join(wb_gdp_final, join_by(country)) %>% # still have NA values for Yemen and Venezuela, try applying na_fill function 
   full_join(wb_gdp_pc_final, join_by(country)) %>% 
   filter(!country %in% countries_to_exclude)
+
+na_counts <- colSums(is.na(all_index_df))
 
 all_indicators <- as.data.frame(unique(names(all_index_df[6:54])))
 
