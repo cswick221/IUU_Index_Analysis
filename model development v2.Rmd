@@ -1,0 +1,53 @@
+---
+title: "model development v2"
+author: "E.M.Thomas"
+date: "2024-03-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Check for collinearity 
+```{r}
+# Assuming your indicators are stored in a data frame called 'data'
+cor_matrix <- cor(scaled_all_index_df[,6:53])
+
+#Get the indices of highly correlated pairs
+high_cor_indices <- which(abs(cor_matrix) > 0.7 & abs(cor_matrix) < 1, arr.ind = TRUE)
+
+# Extract row and column names
+high_cor_variables <- rownames(cor_matrix)[high_cor_indices[,1]]
+high_cor_variables2 <- colnames(cor_matrix)[high_cor_indices[,2]]
+
+# Combine variables into pairs
+high_cor_pairs <- cbind(high_cor_variables, high_cor_variables2)
+
+# Create a dataframe with pairs
+high_cor_df <- data.frame(high_cor_pairs)
+```
+
+
+### Select 10-12 relevant indicators
+```{r}
+id_keep <- c("country",
+             "vessels_on_iuu_lists",
+             "skylight_treatment",
+             "registered_vessels_with_foreign_or_unknown_ownership",
+             "mandatory_vessel_tracking_for_commercial_seagoing_fleet",
+             "size_of_eez" ,
+             "dependency_on_fish_for_protein",
+             "party_to_the_psma",
+             "trade_balance_for_fisheries_products",
+             "voice_and_accountability_estimate",
+             "control_of_corruption",
+             "ratio_capture" ,
+             "gdp_per_capita")
+
+scaled_sub_df <- scaled_all_index_df %>% 
+  select(id_keep)
+
+
+```
+

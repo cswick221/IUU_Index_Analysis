@@ -1,0 +1,183 @@
+---
+title: "model development v1"
+author: "E.M.Thomas"
+date: "2024-03-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Check for collinearity
+
+```{r}
+# Assuming your indicators are stored in a data frame called 'data'
+cor_matrix <- cor(scaled_all_index_df[,6:53])
+
+#Get the indices of highly correlated pairs
+high_cor_indices <- which(abs(cor_matrix) > 0.7 & abs(cor_matrix) < 1, arr.ind = TRUE)
+
+# Extract row and column names
+high_cor_variables <- rownames(cor_matrix)[high_cor_indices[,1]]
+high_cor_variables2 <- colnames(cor_matrix)[high_cor_indices[,2]]
+
+# Combine variables into pairs
+high_cor_pairs <- cbind(high_cor_variables, high_cor_variables2)
+
+# Create a dataframe with pairs
+high_cor_df <- data.frame(high_cor_pairs)
+
+# exclude highly correlated indicators
+remove_high_cor <- c("regulatory_quality_estimate", 
+                     "rule_of_law_estimate", 
+                     "voice_and_accountability_estimate", 
+                     'Perception of levels of corruption',
+                     "total_fisheries_production_metric_tons", 
+                     'Volume of catches', 
+                     'Gross national income per capita',
+                     'Flag State is contracting party or cooperating non-contracting party to all relevant RFMOs',
+                     'Number of fishing ports')
+
+filtered_scaled_all_index_df <- scaled_all_index_df %>% 
+  select(-remove_high_cor)
+```
+
+
+
+```{r}
+# Try cor_matrix again with filtered down dataset
+
+# Assuming your indicators are stored in a data frame called 'data'
+cor_matrix_2 <- cor(filtered_scaled_all_index_df[,6:45])
+
+#Get the indices of highly correlated pairs
+high_cor_indices_2 <- which(abs(cor_matrix_2) > 0.7 & abs(cor_matrix_2) < 1, arr.ind = TRUE)
+
+# Extract row and column names
+high_cor_variables_2 <- rownames(cor_matrix_2)[high_cor_indices_2[,1]]
+high_cor_variables2_2 <- colnames(cor_matrix_2)[high_cor_indices_2[,2]]
+
+# Combine variables into pairs
+high_cor_pairs_2 <- cbind(high_cor_variables_2, high_cor_variables2_2)
+
+# Create a dataframe with pairs
+high_cor_df_2 <- data.frame(high_cor_pairs_2)
+
+remove_high_cor_2 <- c("political_stability_and_absence_of_violence_terrorism_estimate",
+                       'Demand for MSC products')
+
+filtered_scaled_all_index_df_2 <- filtered_scaled_all_index_df %>% 
+  select(-remove_high_cor_2)
+```
+
+
+
+## Variance Inflation Factor
+```{r}
+# Subset the data to include only the relevant columns
+subset_data <- filtered_scaled_all_index_df_2[, 5:43]
+
+# Fit a linear model to calculate VIF
+glm_model <- glm(skylight_treatment ~ ., data = subset_data, family=binomial)
+
+# Calculate VIF for each predictor
+vif_values <- car::vif(glm_model)
+
+# Create a dataframe of predictor names and VIF values
+vif_df <- data.frame(
+  predictor = names(vif_values),
+  vif_value = vif_values
+)
+
+# Arrange the dataframe in ascending order of VIF values
+vif_df <- vif_df[order(vif_df$vif_value), ]
+
+vif_id_keep <- vif_df[1:12, "predictor"]
+```
+
+
+```{r}
+# Remove backticks from column names in vif_id_keep
+cleaned_vif_id_keep <- gsub("`", "", vif_id_keep)
+
+# Filter the original dataset to keep only the selected indicators and the first 6 columns
+model_df_1 <- scaled_all_index_df %>%
+  select(1:6, all_of(cleaned_vif_id_keep))
+```
+
+
+### Binomial Logistic Regression
+
+##### Model 1 
+```{r}
+glm_1 <- glm(skylight_treatment ~ ., data = model_df_1[, 5:18], family = binomial)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary <- summary(glm_1)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df <- as.data.frame(coef_summary)
+
+# Rename the columns for clarity
+colnames(coef_df) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+# filter out p values greater than 0.2
+filtered_coef_df <- coef_df %>% 
+  filter(`Pr(>|z|)` <= 0.2)
+```
+
+##### Model 2
+```{r}
+# Extract the names of predictors with significant p-values from filtered_coef_df
+filtered_coef_1 <- rownames(filtered_coef_df)
+
+filtered_coef_1 <- gsub("`", "", filtered_coef_1)
+
+# Filter model_df_1 to include only the columns corresponding to significant predictors
+model_df_2 <- model_df_1[, c(1:6, which(colnames(model_df_1) %in% filtered_coef_1))]
+
+glm_2 <- glm(skylight_treatment ~ ., data = model_df_2[, 5:12], family = binomial)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_2 <- summary(glm_2)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_2 <- as.data.frame(coef_summary_2)
+
+# Rename the columns for clarity
+colnames(coef_df_2) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+# filter out p values greater than 0.05
+filtered_coef_df_2 <- coef_df_2 %>% 
+  filter(`Pr(>|z|)` <= 0.05)
+
+```
+
+
+##### Model 3
+```{r}
+# list of significant indicators
+filtered_coef_3 <- rownames(filtered_coef_df_2)
+filtered_coef_3 <- gsub("`", "", filtered_coef_3)
+
+# Filter model_df_1 to include only the columns corresponding to significant predictors
+model_df_3 <- model_df_2[, c(1:6, which(colnames(model_df_2) %in% filtered_coef_3))]
+
+glm_3 <- glm(skylight_treatment ~ ., data = model_df_3[, 5:9], family = binomial)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_3 <- summary(glm_3)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_3 <- as.data.frame(coef_summary_3)
+
+# Rename the columns for clarity
+colnames(coef_df_3) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+
+
+```
+
+
+
