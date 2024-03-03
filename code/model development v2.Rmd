@@ -7,12 +7,13 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(pROC)
 ```
 
 ### Check for collinearity 
 ```{r}
 # Assuming your indicators are stored in a data frame called 'data'
-cor_matrix <- cor(scaled_all_index_df[,6:53])
+cor_matrix <- cor(scaled_all_index_df[,3:50])
 
 #Get the indices of highly correlated pairs
 high_cor_indices <- which(abs(cor_matrix) > 0.7 & abs(cor_matrix) < 1, arr.ind = TRUE)
@@ -41,13 +42,102 @@ id_keep <- c("country",
              "party_to_the_psma",
              "trade_balance_for_fisheries_products",
              "voice_and_accountability_estimate",
-             "control_of_corruption",
+             "control_of_corruption_estimate",
              "ratio_capture" ,
-             "gdp_per_capita")
+             "gdp_per_capita") #picked indicators we think have the highest possibility of influencing Skylight outcomes 
 
 scaled_sub_df <- scaled_all_index_df %>% 
-  select(id_keep)
+  select(all_of(id_keep))
+
+scaled_sub_df <- scaled_sub_df[, c(1, 3, 2, 4:13)] # reorganizing so country and skylight adoption are first 
+```
+
+
+### test for colinearity again
+```{r}
+# Try cor_matrix again with filtered down dataset
+
+cor_matrix_sub <- cor(scaled_sub_df[,3:13])
+
+#Get the indices of highly correlated pairs
+high_cor_indices_2 <- which(abs(cor_matrix_sub) > 0.7 & abs(cor_matrix_sub) < 1, arr.ind = TRUE)
+
+# Extract row and column names
+high_cor_variables_2 <- rownames(cor_matrix_sub)[high_cor_indices_2[,1]]
+high_cor_variables2_2 <- colnames(cor_matrix_sub)[high_cor_indices_2[,2]]
+
+# Combine variables into pairs
+high_cor_pairs_2 <- cbind(high_cor_variables_2, high_cor_variables2_2)
+
+# Create a dataframe with pairs
+high_cor_df_sub <- data.frame(high_cor_pairs_2) 
+
+scaled_sub_df_2 <- scaled_sub_df %>% 
+  select(-"voice_and_accountability_estimate") #control of corruption, and voice and accountability are correlated, in first regression control of corruption was more significant so I'm going to keep that one, but we can try it with voice and accountability later 
 
 
 ```
+
+
+### Binomial Logistic Regression
+
+##### Model 1 
+```{r}
+glm_2.1 <- glm(skylight_treatment ~ vessels_on_iuu_lists+
+                 registered_vessels_with_foreign_or_unknown_ownership+
+                 mandatory_vessel_tracking_for_commercial_seagoing_fleet+
+                 size_of_eez+
+                 dependency_on_fish_for_protein+
+                 party_to_the_psma+
+                 trade_balance_for_fisheries_products+
+                 control_of_corruption_estimate+
+                 ratio_capture+
+                 gdp_per_capita, 
+               data = scaled_sub_df_2, family = binomial)
+
+summary(glm_2.1)
+
+```
+
+
+#### Model 2 
+```{r}
+glm_2.2_df <- scaled_sub_df %>%  
+  select(c("voice_and_accountability_estimate", "control_of_corruption_estimate", "ratio_capture", "skylight_treatment")) 
+ 
+
+glm_2.2 <- glm(skylight_treatment ~ voice_and_accountability_estimate +
+                 control_of_corruption_estimate+
+                 ratio_capture, 
+               data = glm_2.2_df, family = binomial )
+
+summary(glm_2.2)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_2.2, newdata = glm_2.2_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_2.2_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 

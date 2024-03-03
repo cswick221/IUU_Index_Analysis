@@ -237,7 +237,10 @@ fish_index_final <- fish_id_clean %>%
   mutate(across(2:4, fill_na_mean)) %>% 
   group_by(country) %>% 
   summarise(across(2:4,mean, na.rm = TRUE)) %>% 
-  select(-total_fisheries_production_metric_tons)
+  select(-total_fisheries_production_metric_tons) 
+
+  fish_index_final$aquaculture_production_metric_tons[fish_index_final$aquaculture_production_metric_tons == 0.000000e+00] <- .0000000000001
+  
 
 fish_index_final$ratio_capture <- fish_index_final$capture_fisheries_production_metric_tons/fish_index_final$aquaculture_production_metric_tons
   
@@ -305,11 +308,11 @@ all_index_df <- skylight_df_final %>%
   full_join(wb_gdp_final, join_by(country)) %>% # still have NA values for Yemen and Venezuela, try applying na_fill function 
   full_join(wb_gdp_pc_final, join_by(country)) %>% 
   filter(!country %in% countries_to_exclude) %>% 
-  select(-treatment_year, -sessions, -no_active_weeks)
+  select(-c(treatment_year, sessions, no_of_active_weeks))
 
 na_counts <- colSums(is.na(all_index_df))
 
-all_indicators <- as.data.frame(unique(names(all_index_df[6:57])))
+all_indicators <- as.data.frame(unique(names(all_index_df[6:54])))
 
 #write.csv(all_indicators,"data/all_indicators.csv")
 ```
@@ -320,15 +323,17 @@ all_indicators <- as.data.frame(unique(names(all_index_df[6:57])))
 ### Scale the indicators
 ```{r}
 # Standardize columns 6 to 49 in all_index_df
-scaled_columns <- scale(all_index_df[, 6:57], center = TRUE, scale = TRUE)
+
+scaled_columns <- scale(all_index_df[, 3:54], center = TRUE, scale = TRUE)
 
 # Combine scaled columns with non-scaled columns and preserve country and year columns
-scaled_all_index_df <- cbind(all_index_df[, 1:5], as.data.frame(scaled_columns)) %>% 
-  select(-`Authorised vessel data provided to FAO HSVAR`) #this has 90 NA values lol yeet
+scaled_all_index_df <- cbind(all_index_df[, 1:2], as.data.frame(scaled_columns)) %>%  
+  select(-`Authorised vessel data provided to FAO HSVAR`) %>%   #this has 90 NA values lol yeet
+  clean_names()
 
 # Reorder so that response variable is next to the explanatory variables 
-scaled_all_index_df <- scaled_all_index_df[, c(1, 3:5, 2, 6:57)] %>% 
-  clean_names()
+#scaled_all_index_df <- scaled_all_index_df[, c(1, 3:5, 2, 6:50)] %>% # commented out cause I don' think we need this anymore 
+ # clean_names()
 
 ```
 
