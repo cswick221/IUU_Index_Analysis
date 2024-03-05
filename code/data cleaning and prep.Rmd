@@ -308,21 +308,13 @@ all_index_df <- skylight_df_final %>%
   full_join(wb_gdp_final, join_by(country)) %>% # still have NA values for Yemen and Venezuela, try applying na_fill function 
   full_join(wb_gdp_pc_final, join_by(country)) %>% 
   filter(!country %in% countries_to_exclude) %>% 
-<<<<<<< HEAD:code/statistical_methods_clean.Rmd
-  select(-c(treatment_year, sessions, no_of_active_weeks))
-
-na_counts <- colSums(is.na(all_index_df))
-
-all_indicators <- as.data.frame(unique(names(all_index_df[6:54])))
-=======
   select(-treatment_year, -no_of_active_weeks, -sessions) %>% 
   clean_names() %>% 
   select(-authorised_vessel_data_provided_to_fao_hsvar)#this has 90 NA values lol yeet
 
 na_counts <- colSums(is.na(all_index_df))
 
-all_indicators <- as.data.frame(unique(names(all_index_df[3:54])))
->>>>>>> 395bdb7f9449e89b25cd98d47d946bd6f8e312e6:code/data cleaning and prep.Rmd
+all_indicators <- as.data.frame(unique(names(all_index_df[3:53])))
 
 #write.csv(all_indicators,"data/all_indicators.csv")
 ```
@@ -331,25 +323,11 @@ all_indicators <- as.data.frame(unique(names(all_index_df[3:54])))
 ### Scale the indicators
 ```{r}
 # Standardize columns 6 to 49 in all_index_df
-<<<<<<< HEAD:code/statistical_methods_clean.Rmd
 
-scaled_columns <- scale(all_index_df[, 3:54], center = TRUE, scale = TRUE)
-
-# Combine scaled columns with non-scaled columns and preserve country and year columns
-scaled_all_index_df <- cbind(all_index_df[, 1:2], as.data.frame(scaled_columns)) %>%  
-  select(-`Authorised vessel data provided to FAO HSVAR`) %>%   #this has 90 NA values lol yeet
-  clean_names()
-
-# Reorder so that response variable is next to the explanatory variables 
-#scaled_all_index_df <- scaled_all_index_df[, c(1, 3:5, 2, 6:50)] %>% # commented out cause I don' think we need this anymore 
- # clean_names()
-=======
-scaled_columns <- scale(all_index_df[, 3:54], center = TRUE, scale = TRUE)
+scaled_columns <- scale(all_index_df[, 3:53], center = TRUE, scale = TRUE)
 
 # Combine scaled columns with non-scaled columns and preserve country and year columns
 scaled_all_index_df <- cbind(all_index_df[, 1:2], as.data.frame(scaled_columns)) 
->>>>>>> 395bdb7f9449e89b25cd98d47d946bd6f8e312e6:code/data cleaning and prep.Rmd
-
 ```
 
 

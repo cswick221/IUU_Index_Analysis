@@ -13,11 +13,7 @@ library(pROC)
 ### Check for collinearity 
 ```{r}
 # Assuming your indicators are stored in a data frame called 'data'
-<<<<<<< HEAD
 cor_matrix <- cor(scaled_all_index_df[,3:50])
-=======
-cor_matrix <- cor(all_index_df[,3:53])
->>>>>>> 395bdb7f9449e89b25cd98d47d946bd6f8e312e6
 
 #Get the indices of highly correlated pairs
 high_cor_indices <- which(abs(cor_matrix) > 0.7 & abs(cor_matrix) < 1, arr.ind = TRUE)
@@ -36,7 +32,6 @@ high_cor_df <- data.frame(high_cor_pairs)
 
 ### Select 10-12 relevant indicators
 ```{r}
-<<<<<<< HEAD
 id_keep <- c("country",
              "vessels_on_iuu_lists",
              "skylight_treatment",
@@ -54,7 +49,7 @@ id_keep <- c("country",
 scaled_sub_df <- scaled_all_index_df %>% 
   select(all_of(id_keep))
 
-scaled_sub_df <- scaled_sub_df[, c(1, 3, 2, 4:13)] # reorganizing so country and skylight adoption are first 
+
 ```
 
 
@@ -108,7 +103,8 @@ glm_1 <- glm(skylight_treatment ~ ., data = glm_df_1, family=binomial)
 
 ##### Model 1 
 ```{r}
-glm_2.1 <- glm(skylight_treatment ~ vessels_on_iuu_lists+
+glm_2.1 <- glm(skylight_treatment ~ 
+                 vessels_on_iuu_lists+
                  registered_vessels_with_foreign_or_unknown_ownership+
                  mandatory_vessel_tracking_for_commercial_seagoing_fleet+
                  size_of_eez+
@@ -118,7 +114,7 @@ glm_2.1 <- glm(skylight_treatment ~ vessels_on_iuu_lists+
                  control_of_corruption_estimate+
                  ratio_capture+
                  gdp_per_capita, 
-               data = scaled_sub_df_2, family = binomial)
+               data = scaled_sub_df, family = binomial)
 
 summary(glm_2.1)
 
@@ -154,18 +150,28 @@ print(auc_value)
 
 ```
 
+```{r}
+glm_df_1 <- scaled_all_index_df %>% 
+  select(skylight_treatment,
+         vessels_on_iuu_lists,
+         registered_vessels_with_foreign_or_unknown_ownership,
+         mandatory_vessel_tracking_for_commercial_seagoing_fleet,
+         size_of_eez,
+         dependency_on_fish_for_protein,
+         party_to_the_psma,
+         trade_balance_for_fisheries_products,
+         voice_and_accountability_estimate,
+         control_of_corruption_estimate,
+         gdp_per_capita) 
+
+
+glm_1 <- glm(skylight_treatment ~ ., data = glm_df_1, family=binomial)
+```
 
 
 
 
 
-
-
-
-
-
-=======
->>>>>>> 395bdb7f9449e89b25cd98d47d946bd6f8e312e6
 
 
 
