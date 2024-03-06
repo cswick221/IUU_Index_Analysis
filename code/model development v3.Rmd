@@ -1,0 +1,199 @@
+---
+title: "model development v3"
+author: "Chloe Swick"
+date: "2024-03-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### non scaled data + swapping the ratio for capture/aquqculture 
+
+
+```{r}
+
+all_index_df$ratio_capture_2 <-all_index_df$aquaculture_production_metric_tons/all_index_df$capture_fisheries_production_metric_tons##flipping the ratio
+
+```
+
+
+### Select 10-12 relevant indicators
+```{r}
+id_keep_2 <- c("country",
+             "vessels_on_iuu_lists",
+             "skylight_treatment",
+             "registered_vessels_with_foreign_or_unknown_ownership",
+             "mandatory_vessel_tracking_for_commercial_seagoing_fleet",
+             "size_of_eez" ,
+             "dependency_on_fish_for_protein",
+             "party_to_the_psma",
+             "trade_balance_for_fisheries_products",
+             "voice_and_accountability_estimate",
+             "control_of_corruption_estimate",
+             "ratio_capture_2" ,
+             "gdp_per_capita") #picked indicators we think have the highest possibility of influencing Skylight outcomes 
+
+sub_df <- all_index_df %>% 
+  select(all_of(id_keep_2))
+
+sub_df <- sub_df[, c(3,1,2,4:13)] #fixes error with cor()
+
+```
+
+
+
+### test for colinearity again
+```{r}
+# Try cor_matrix again with filtered down dataset
+
+cor_matrix_sub <- cor(sub_df[,3:13])
+
+#Get the indices of highly correlated pairs
+high_cor_indices_2 <- which(abs(cor_matrix_sub) > 0.7 & abs(cor_matrix_sub) < 1, arr.ind = TRUE)
+
+# Extract row and column names
+high_cor_variables_2 <- rownames(cor_matrix_sub)[high_cor_indices_2[,1]]
+high_cor_variables2_2 <- colnames(cor_matrix_sub)[high_cor_indices_2[,2]]
+
+# Combine variables into pairs
+high_cor_pairs_2 <- cbind(high_cor_variables_2, high_cor_variables2_2)
+
+# Create a dataframe with pairs
+high_cor_df_sub <- data.frame(high_cor_pairs_2) 
+
+#voice and accountability and control or corruption of colinear 
+```
+
+
+### Binomial Logistic Regression
+
+##### Model 1 
+```{r} 
+#trying it with all of variables 
+glm_3.1 <- glm(skylight_treatment ~ 
+                 vessels_on_iuu_lists+
+                 registered_vessels_with_foreign_or_unknown_ownership+
+                 mandatory_vessel_tracking_for_commercial_seagoing_fleet+
+                 size_of_eez+
+                 dependency_on_fish_for_protein+
+                 party_to_the_psma+
+                 trade_balance_for_fisheries_products+
+                 control_of_corruption_estimate+
+                 voice_and_accountability_estimate+
+                 ratio_capture_2+
+                 gdp_per_capita, 
+               data = sub_df, family = binomial)
+
+summary(glm_3.1)
+##there is no difference if the data is scaled or unscaled 
+```
+
+
+#### Model 2 
+```{r}
+
+glm_3.2_df <- sub_df %>%  
+  select(c("voice_and_accountability_estimate", "control_of_corruption_estimate", "ratio_capture_2", "skylight_treatment")) 
+ 
+
+glm_3.2 <- glm(skylight_treatment ~ voice_and_accountability_estimate +
+                 control_of_corruption_estimate +
+                 ratio_capture_2, 
+               data = glm_3.2_df, family = binomial )
+
+summary(glm_3.2)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_3.2, newdata = glm_3.2_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_3.2_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+##ratio capture is less significant than when it was flipped around.... I wonder why it used to be significant??? 
+
+```
+
+
+## Model 3, narrowing it down by significant and close to significant covariants 
+
+```{r} 
+
+glm_3.3_df <- sub_df %>%  
+  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "skylight_treatment")) 
+ 
+
+#trying it with all of variables 
+glm_3.3 <- glm(skylight_treatment ~ 
+                 size_of_eez+
+                 
+                # party_to_the_psma+
+                # trade_balance_for_fisheries_products+
+                # control_of_corruption_estimate+
+                 voice_and_accountability_estimate+
+                
+                 gdp_per_capita, 
+               data = sub_df, family = binomial)
+
+summary(glm_3.3)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_3.3, newdata = glm_3.3_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_3.3_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+
+```
+
+### Model 4, trying with everything and running and removing something different a bunch of times idk 
+```{r} 
+
+glm_3.4 <- glm(skylight_treatment ~ 
+               #  vessels_on_iuu_lists+
+               #  registered_vessels_with_foreign_or_unknown_ownership+
+               #  mandatory_vessel_tracking_for_commercial_seagoing_fleet+
+                 size_of_eez+
+                # dependency_on_fish_for_protein+
+               #  party_to_the_psma+
+                # trade_balance_for_fisheries_products+
+               #  control_of_corruption_estimate+
+                 voice_and_accountability_estimate+
+               #  ratio_capture_2+
+                 gdp_per_capita, 
+               data = sub_df, family = binomial)
+
+summary(glm_3.4)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -49,6 +49,7 @@ id_keep <- c("country",
 scaled_sub_df <- scaled_all_index_df %>% 
   select(all_of(id_keep))
 
+scaled_sub_df <- scaled_sub_df[, c(3,1,2,4:13)] #fixes error with cor()
 
 ```
 
@@ -78,31 +79,12 @@ scaled_sub_df_2 <- scaled_sub_df %>%
 
 ```
 
-=======
-glm_df_1 <- scaled_all_index_df %>% 
-  select(country,
-         skylight_treatment,
-         vessels_on_iuu_lists,
-         registered_vessels_with_foreign_or_unknown_ownership,
-         mandatory_vessel_tracking_for_commercial_seagoing_fleet,
-         size_of_eez,
-         dependency_on_fish_for_protein,
-         party_to_the_psma,
-         trade_balance_for_fisheries_products,
-         voice_and_accountability_estimate,
-         control_of_corruption_estimate,
-         gdp_per_capita) #%>% 
-  #filter(country != "Micronesia (Federated States of)") %>% 
-  #filter(country != "Seychelles")
-
-
-glm_1 <- glm(skylight_treatment ~ ., data = glm_df_1, family=binomial)
->>>>>>> 395bdb7f9449e89b25cd98d47d946bd6f8e312e6
 
 ### Binomial Logistic Regression
 
 ##### Model 1 
-```{r}
+```{r} 
+#trying it with all of variables 
 glm_2.1 <- glm(skylight_treatment ~ 
                  vessels_on_iuu_lists+
                  registered_vessels_with_foreign_or_unknown_ownership+
@@ -121,9 +103,9 @@ summary(glm_2.1)
 ```
 
 
-<<<<<<< HEAD
 #### Model 2 
 ```{r}
+#trying it with all of the variables that were significant in our 1st try model, why is the ratio not significant now, but was when the data was not scaled? is it because the ratio is flipped? should that make a difference? 
 glm_2.2_df <- scaled_sub_df %>%  
   select(c("voice_and_accountability_estimate", "control_of_corruption_estimate", "ratio_capture", "skylight_treatment")) 
  
@@ -151,6 +133,7 @@ print(auc_value)
 ```
 
 ```{r}
+#everything, control of corruption and voice and accountability 
 glm_df_1 <- scaled_all_index_df %>% 
   select(skylight_treatment,
          vessels_on_iuu_lists,
@@ -166,6 +149,7 @@ glm_df_1 <- scaled_all_index_df %>%
 
 
 glm_1 <- glm(skylight_treatment ~ ., data = glm_df_1, family=binomial)
+summary(glm_1)
 ```
 
 
