@@ -1,0 +1,60 @@
+---
+title: "co variant selection"
+author: "Chloe Swick"
+date: "2024-03-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(glmnet)
+```
+
+
+```{r}
+## with all of the variables 
+x1 <- all_index_df[,3:50]
+y1 <- all_index_df$skylight_treatment
+
+## with the subsetted variables 
+
+x2 <- sub_df[,3:14]
+y2 <- sub_df$skylight_treatment
+
+```
+
+
+
+
+```{r}
+fit1 <- glmnet(x1, y1, family = "binomial")
+
+fit2 <- glmnet(x2, y2, family = "binomial")
+```
+
+```{r}
+plot(fit)
+
+plot(fit2)
+```
+
+```{r}
+print(fit1)
+
+coef(fit1, s=0.079310)
+```
+
+```{r}
+print(fit2)
+
+coef(fit2, s=0.039630)
+```
+
+
+
+
+
+
+
+
+

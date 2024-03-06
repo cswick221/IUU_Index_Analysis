@@ -33,12 +33,13 @@ id_keep_2 <- c("country",
              "voice_and_accountability_estimate",
              "control_of_corruption_estimate",
              "ratio_capture_2" ,
+             "ratio_capture",
              "gdp_per_capita") #picked indicators we think have the highest possibility of influencing Skylight outcomes 
 
 sub_df <- all_index_df %>% 
   select(all_of(id_keep_2))
 
-sub_df <- sub_df[, c(3,1,2,4:13)] #fixes error with cor()
+sub_df <- sub_df[, c(3,1,2,4:14)] #fixes error with cor()
 
 ```
 
