@@ -106,8 +106,6 @@ print(auc_value)
 glm_4.3_df <- sub_df_4 %>%  
   select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "party_to_the_psma", "skylight_treatment")) 
  
-
-
 glm_4.3 <- glm(skylight_treatment ~ ., 
                data = glm_4.3_df, family = binomial)
 
