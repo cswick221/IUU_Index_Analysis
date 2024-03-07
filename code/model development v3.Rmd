@@ -21,9 +21,9 @@ all_index_df$ratio_capture_2 <-all_index_df$aquaculture_production_metric_tons/a
 
 ### Select 10-12 relevant indicators
 ```{r}
-id_keep_2 <- c("country",
-             "vessels_on_iuu_lists",
-             "skylight_treatment",
+id_keep_2 <- c("skylight_treatment",
+               "country",
+               "vessels_on_iuu_lists",
              "registered_vessels_with_foreign_or_unknown_ownership",
              "mandatory_vessel_tracking_for_commercial_seagoing_fleet",
              "size_of_eez" ,
@@ -38,8 +38,6 @@ id_keep_2 <- c("country",
 
 sub_df <- all_index_df %>% 
   select(all_of(id_keep_2))
-
-sub_df <- sub_df[, c(3,1,2,4:14)] #fixes error with cor()
 
 ```
 

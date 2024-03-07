@@ -32,9 +32,9 @@ high_cor_df <- data.frame(high_cor_pairs)
 
 ### Select 10-12 relevant indicators
 ```{r}
-id_keep <- c("country",
+id_keep <- c("skylight_treatment",
+             "country",
              "vessels_on_iuu_lists",
-             "skylight_treatment",
              "registered_vessels_with_foreign_or_unknown_ownership",
              "mandatory_vessel_tracking_for_commercial_seagoing_fleet",
              "size_of_eez" ,
@@ -48,8 +48,6 @@ id_keep <- c("country",
 
 scaled_sub_df <- scaled_all_index_df %>% 
   select(all_of(id_keep))
-
-scaled_sub_df <- scaled_sub_df[, c(3,1,2,4:13)] #fixes error with cor()
 
 ```
 
