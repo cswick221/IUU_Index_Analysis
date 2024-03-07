@@ -10,6 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(glmnet)
 ```
 
+narrowed down variables with collinearity and logic 
+
+used often in baesian techniques 
+put your thumb on the hypothesis that you think is most "right" 
+penalized maximum likelihood 
+use BIC --> MUMIN package, if we can't get BIC to work use AIC, minimum BIC, any model between 0 and 2 delta BIC should be considered further, this should be small but if it is not they should have the same variables (can't tell anyhting from the data to separate them). between 2-8 should still be considered, anything over 8 should be thrown out. Should be narrowed to several models 
+
 
 ```{r}
 ## with all of the variables 
@@ -33,7 +40,7 @@ fit2 <- glmnet(x2, y2, family = "binomial")
 ```
 
 ```{r}
-plot(fit)
+plot(fit1)
 
 plot(fit2)
 ```
@@ -50,6 +57,12 @@ print(fit2)
 coef(fit2, s=0.039630)
 ```
 
+
+```{r}
+relax.glmnet(fit2)
+```
+
+graphing: 
 
 
 

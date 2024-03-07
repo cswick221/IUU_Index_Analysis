@@ -49,7 +49,7 @@ sub_df <- sub_df[, c(3,1,2,4:14)] #fixes error with cor()
 ```{r}
 # Try cor_matrix again with filtered down dataset
 
-cor_matrix_sub <- cor(sub_df[,3:13])
+cor_matrix_sub <- cor(sub_df[,3:14])
 
 #Get the indices of highly correlated pairs
 high_cor_indices_2 <- which(abs(cor_matrix_sub) > 0.7 & abs(cor_matrix_sub) < 1, arr.ind = TRUE)

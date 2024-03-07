@@ -431,7 +431,7 @@ cat("Accuracy:", accuracy, "\n")
 
 
 ```{r}
-confusionMatrix(data=skylight_glm1, all_index_df)
+#confusionMatrix(data=skylight_glm1, all_index_df)
 ```
 
 
@@ -543,6 +543,7 @@ all_index_df$y_prob <- y_prob
 ggplot(all_index_df, aes(x=control_of_corruption_estimate, y=skylight_treatment)) + geom_point() +
      geom_smooth(method = "glm", color = "green", se = TRUE, 
               method.args = list(family = "binomial"), formula = y ~ poly(x, 2))
+### need to hold other variables constant, can only graph one at a time, pick the best one? 
 ```
 
 
