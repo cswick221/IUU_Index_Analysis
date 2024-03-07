@@ -312,9 +312,13 @@ all_index_df <- skylight_df_final %>%
   clean_names() %>% 
   select(-authorised_vessel_data_provided_to_fao_hsvar)#this has 90 NA values lol yeet
 
+### added this flipped ratio here 
+all_index_df$ratio_capture_2 <-all_index_df$aquaculture_production_metric_tons/all_index_df$capture_fisheries_production_metric_tons##flipping the ratio
+
 na_counts <- colSums(is.na(all_index_df))
 
 all_indicators <- as.data.frame(unique(names(all_index_df[3:53])))
+
 
 #write.csv(all_indicators,"data/all_indicators.csv")
 ```
@@ -324,7 +328,7 @@ all_indicators <- as.data.frame(unique(names(all_index_df[3:53])))
 ```{r}
 # Standardize columns 6 to 49 in all_index_df
 
-scaled_columns <- scale(all_index_df[, 3:53], center = TRUE, scale = TRUE)
+scaled_columns <- scale(all_index_df[, 3:54], center = TRUE, scale = TRUE)
 
 # Combine scaled columns with non-scaled columns and preserve country and year columns
 scaled_all_index_df <- cbind(all_index_df[, 1:2], as.data.frame(scaled_columns)) 

@@ -10,13 +10,31 @@ knitr::opts_chunk$set(echo = TRUE)
 library(MuMIn)
 ```
 
+```{r}
+id_keep_4 <- c("skylight_treatment",
+               "vessels_on_iuu_lists",
+             "registered_vessels_with_foreign_or_unknown_ownership",
+             "mandatory_vessel_tracking_for_commercial_seagoing_fleet",
+             "size_of_eez" ,
+             "dependency_on_fish_for_protein",
+             "party_to_the_psma",
+             "trade_balance_for_fisheries_products",
+             "voice_and_accountability_estimate",
+             "control_of_corruption_estimate",
+             #"ratio_capture_2" , #when this is commented out, we don't get the crazy long errorr...
+             "ratio_capture",
+             "gdp_per_capita") #removed country, made sure skylight_treatment was first
+
+
+sub_df_4 <- all_index_df %>% 
+  select(all_of(id_keep_4))
+```
+
 
 ```{r}
-df_1 <- sub_df[, c(1,3:14)]
-
 options(na.action = "na.fail")
 
-glm_1 <- glm(skylight_treatment ~ ., data = df_1, family = binomial)
+glm_1 <- glm(skylight_treatment ~ ., data = sub_df_4, family = binomial)
 
 
 ms1 <- dredge(glm_1, rank = "BIC")
@@ -24,8 +42,8 @@ ms1 <- dredge(glm_1, rank = "BIC")
 
 ## Model 1
 ```{r}
-
-glm_4.1_df <- df_1 %>%  
+### AUC 0.763
+glm_4.1_df <- sub_df_4 %>%  
   select(c("size_of_eez", "gdp_per_capita", "skylight_treatment")) 
  
 
@@ -37,7 +55,7 @@ summary(glm_4.1)
 
 # Get predicted probabilities
 
-y_prob <- predict(glm_4.1, newdata = glm_3.3_df, type = 'response')
+y_prob <- predict(glm_4.1, newdata = glm_4.1_df, type = 'response')
 
 # Create a ROC curve object
 roc_curve <- roc(glm_4.1_df$skylight_treatment, y_prob)
@@ -54,12 +72,12 @@ print(auc_value)
 
 ## Model 2 
 ```{r} 
-
-glm_4.2_df <- sub_df %>%  
-  select(c("size_of_eez", "control_of_corruption_estimate", "gdp_per_capita", "skylight_treatment")) 
+### AUC 0.8148
+glm_4.2_df <- sub_df_4 %>%  
+  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "skylight_treatment")) 
  
 
-#trying it with all of variables 
+ 
 glm_4.2 <- glm(skylight_treatment ~ ., 
                data = glm_4.2_df, family = binomial)
 
@@ -84,31 +102,23 @@ print(auc_value)
 
 ## Model 3 
 ```{r} 
-
-glm_3.3_df <- sub_df %>%  
-  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "skylight_treatment")) 
+### AUC .821
+glm_4.3_df <- sub_df_4 %>%  
+  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "party_to_the_psma", "skylight_treatment")) 
  
 
-#trying it with all of variables 
-glm_3.3 <- glm(skylight_treatment ~ 
-                 size_of_eez+
-                 
-                # party_to_the_psma+
-                # trade_balance_for_fisheries_products+
-                # control_of_corruption_estimate+
-                 voice_and_accountability_estimate+
-                
-                 gdp_per_capita, 
-               data = sub_df, family = binomial)
 
-summary(glm_3.3)
+glm_4.3 <- glm(skylight_treatment ~ ., 
+               data = glm_4.3_df, family = binomial)
+
+summary(glm_4.3)
 
 # Get predicted probabilities
 
-y_prob <- predict(glm_3.3, newdata = glm_3.3_df, type = 'response')
+y_prob <- predict(glm_4.3, newdata = glm_4.3_df, type = 'response')
 
 # Create a ROC curve object
-roc_curve <- roc(glm_3.3_df$skylight_treatment, y_prob)
+roc_curve <- roc(glm_4.3_df$skylight_treatment, y_prob)
 
 # Calculate AUC
 auc_value <- auc(roc_curve)
@@ -119,33 +129,24 @@ print(auc_value)
 
 ```
 
-## Model 4 
+## Model 4.4 
 ```{r} 
-
-glm_3.3_df <- sub_df %>%  
-  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "skylight_treatment")) 
+### AUC 0.8159
+glm_4.4_df <- sub_df_4 %>%  
+  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "skylight_treatment","trade_balance_for_fisheries_products")) 
  
 
-#trying it with all of variables 
-glm_3.3 <- glm(skylight_treatment ~ 
-                 size_of_eez+
-                 
-                # party_to_the_psma+
-                # trade_balance_for_fisheries_products+
-                # control_of_corruption_estimate+
-                 voice_and_accountability_estimate+
-                
-                 gdp_per_capita, 
-               data = sub_df, family = binomial)
+glm_4.4 <- glm(skylight_treatment ~ ., 
+               data = glm_4.4_df, family = binomial)
 
-summary(glm_3.3)
+summary(glm_4.4)
 
 # Get predicted probabilities
 
-y_prob <- predict(glm_3.3, newdata = glm_3.3_df, type = 'response')
+y_prob <- predict(glm_4.4, newdata = glm_4.4_df, type = 'response')
 
 # Create a ROC curve object
-roc_curve <- roc(glm_3.3_df$skylight_treatment, y_prob)
+roc_curve <- roc(glm_4.4_df$skylight_treatment, y_prob)
 
 # Calculate AUC
 auc_value <- auc(roc_curve)
@@ -157,83 +158,9 @@ print(auc_value)
 ```
 
 ## Model 5 
-```{r} 
-
-glm_3.3_df <- sub_df %>%  
-  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "skylight_treatment")) 
- 
-
-#trying it with all of variables 
-glm_3.3 <- glm(skylight_treatment ~ 
-                 size_of_eez+
-                 
-                # party_to_the_psma+
-                # trade_balance_for_fisheries_products+
-                # control_of_corruption_estimate+
-                 voice_and_accountability_estimate+
-                
-                 gdp_per_capita, 
-               data = sub_df, family = binomial)
-
-summary(glm_3.3)
-
-# Get predicted probabilities
-
-y_prob <- predict(glm_3.3, newdata = glm_3.3_df, type = 'response')
-
-# Create a ROC curve object
-roc_curve <- roc(glm_3.3_df$skylight_treatment, y_prob)
-
-# Calculate AUC
-auc_value <- auc(roc_curve)
-
-# Print the AUC value
-print(auc_value)
-
+```{r}
 
 ```
-
-
-## Model 6 
-```{r} 
-
-glm_3.3_df <- sub_df %>%  
-  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "skylight_treatment")) 
- 
-
-#trying it with all of variables 
-glm_3.3 <- glm(skylight_treatment ~ 
-                 size_of_eez+
-                 
-                # party_to_the_psma+
-                # trade_balance_for_fisheries_products+
-                # control_of_corruption_estimate+
-                 voice_and_accountability_estimate+
-                
-                 gdp_per_capita, 
-               data = sub_df, family = binomial)
-
-summary(glm_3.3)
-
-# Get predicted probabilities
-
-y_prob <- predict(glm_3.3, newdata = glm_3.3_df, type = 'response')
-
-# Create a ROC curve object
-roc_curve <- roc(glm_3.3_df$skylight_treatment, y_prob)
-
-# Calculate AUC
-auc_value <- auc(roc_curve)
-
-# Print the AUC value
-print(auc_value)
-
-
-```
-
-
-
-
 
 
 
