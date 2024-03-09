@@ -1,0 +1,282 @@
+---
+title: "clean and prep subset data"
+author: "E.M.Thomas"
+date: "2024-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(readxl)
+library(countrycode)
+library(broom)
+library(here)
+library(tidyr)
+library(jtools)
+library(caret)
+library(AICcmodavg) 
+library(equatiomatic)
+library(zoo)
+
+```
+
+# Load and clean data
+```{r}
+# filter year for indexs
+filter_year <- 2019 #to update across all dataframes 
+```
+
+### Functions
+```{r}
+# Define function to replace NAs with the most recent non-NA value within each group (country)
+# For IUUFR dataset 
+fill_na_last_non_na <- function(x) {
+  if (any(!is.na(x))) {
+    na.locf(x, na.rm = FALSE, fromLast = TRUE)
+  } else {
+    x
+  }
+}
+
+# Define function to replace NA values with the mean of the respective indicator column
+fill_na_mean <- function(x) {
+  if (any(is.na(x))) {
+    x[is.na(x)] <- mean(x, na.rm = TRUE)
+  }
+  x
+}
+```
+
+
+### Skylight data
+```{r}
+### Organization engagements
+organization_engagements <- read_csv(here("data", "Skylight Program Metrics_Organizations_Table.csv")) %>% clean_names()
+
+### Weekly country engagements
+weekly_country_engagements <- read_csv(here("data", "Skylight Program Metrics_Countries_Table.csv")) %>% clean_names()
+
+weekly_country_engagements$country <- countrycode(weekly_country_engagements$country, "country.name", "country.name") 
+
+weekly_country_engagements <- weekly_country_engagements%>% 
+  filter(no_of_active_weeks >2) 
+
+#list of active skylight countries 
+active_skylight_countries <- weekly_country_engagements$country 
+
+### Engagment sessions
+skylight_engagement_sessions <- read_csv(here("data","Metrics_Countries_Pivot_table-2.csv")) %>% clean_names()
+
+country_sessions <- skylight_engagement_sessions %>% 
+  rename(country = engagement)
+
+country_sessions$country <- countrycode(country_sessions$country, "country.name", "country.name") 
+
+country_sessions <- country_sessions %>% 
+  drop_na(country) %>% 
+  group_by(country) %>%
+  summarize(sessions = sum(sessions, na.rm = TRUE))
+
+### Deals data
+skylight_deal_dates <- read_excel(here("data", "updated deals.xlsx")) %>% clean_names()
+
+skylight_deal_dates$deal_country[skylight_deal_dates$deal_country == "Micronesia"] <- "Federated States of Micronesia"
+
+skylight_deal_dates$country <- countrycode(skylight_deal_dates$deal_country, "country.name", "country.name")
+```
+
+
+# IUUFR Data
+```{r}
+# Read in and clean the IUUFR data
+iuu_index_scores <- read_csv(here("data", "iuu_fishing_index_2019-2023_indicator_scores.csv")) %>% 
+                clean_names() 
+                
+iuu_index_scores$country[iuu_index_scores$country == "Micronesia (FS of)"] <- "Federated States of Micronesia"
+iuu_index_scores$country <- countrycode(iuu_index_scores$country, "country.name", "country.name") 
+iuu_index_countries <- c(unique(iuu_index_scores$country))
+
+
+# Make each indicator a separate column 
+iuufr_index_final <- iuu_index_scores %>% 
+  select(country, year, indicator_name, score) %>% 
+  pivot_wider(names_from = "indicator_name", 
+             values_from = "score") %>% 
+  clean_names() %>% 
+  select(country,
+         year,
+         vessels_on_iuu_lists,
+         registered_vessels_with_foreign_or_unknown_ownership,
+         mandatory_vessel_tracking_for_commercial_seagoing_fleet,
+         size_of_eez,
+         dependency_on_fish_for_protein,
+         party_to_the_psma,
+         trade_balance_for_fisheries_products) %>% 
+  mutate(year = as.Date(year)) %>% 
+  group_by(country) %>%
+  arrange(year) %>%
+  select(-year) %>% 
+  fill(everything()) %>% 
+  slice(n())
+
+```
+
+
+```{r}
+### Governance indicators
+# Read in and clean data
+governance_indicators <- read_csv(here("data", "governance_indicators.csv")) %>% 
+  clean_names() %>%
+  rename_all(~ gsub("x(\\d+)_yr\\1", "\\1", .)) %>% 
+  rename(country=country_name)
+
+governance_indicators$country <- countrycode(governance_indicators$country,"country.name", "country.name")
+
+# Extract the indicator estimates 
+gov_id_estimates <- governance_indicators %>% 
+  filter(grepl("EST", series_code)) %>% 
+  mutate_all(~ ifelse(. == "..", NA, .)) 
+
+# Put all the indicators in separate columns 
+wb_gov_index_df <- gov_id_estimates %>%
+  pivot_longer(cols = 5:28,
+               names_to = "year", 
+               values_to = "value") %>% 
+  subset(select = -series_code) %>% 
+  pivot_wider(names_from = "series_name",
+              values_from = "value") %>% 
+  clean_names() %>% 
+  filter(country %in% iuu_index_countries) %>% 
+  select(-country_code) %>% 
+  select(country, year, voice_and_accountability_estimate, control_of_corruption_estimate) 
+
+# Convert indicator scores to numeric
+wb_gov_index_df$year <- as.numeric(wb_gov_index_df$year)
+wb_gov_index_df$control_of_corruption_estimate <- as.numeric(wb_gov_index_df$control_of_corruption_estimate)
+wb_gov_index_df$voice_and_accountability_estimate <- as.numeric(wb_gov_index_df$voice_and_accountability_estimate)
+
+
+wb_gov_final_df <- wb_gov_index_df %>%
+  group_by(country) %>%
+  filter(year == max(year, na.rm = TRUE)) %>%  # Filter for the maximum year value
+  ungroup() %>%
+  select(-year) %>% 
+  fill(everything())
+
+```
+
+
+```{r}
+### GDP per capita
+wb_gdp_pc <- read_csv(here("data", "World Bank GDP per Capita.csv")) %>%
+  rename(country=`Country Name`) %>% 
+  select(-`Indicator Name`, -`Indicator Code`, -`Country Code`) 
+wb_gdp_pc$country <- countrycode(wb_gdp_pc$country, "country.name", "country.name")
+
+wb_gdp_pc_final <- wb_gdp_pc %>% 
+  pivot_longer(cols = 2:64,
+               names_to = "year", 
+               values_to = "gdp_per_capita") %>% 
+  group_by(country) %>%
+  filter(!is.na(gdp_per_capita)) %>%
+  slice_max(order_by = year, n = 1) %>%
+  ungroup() %>%
+  distinct(country, .keep_all = TRUE) %>% 
+  filter(country %in% iuu_index_countries) %>% 
+  select(-year)
+```
+
+
+```{r}
+### Fish production indicators
+##### OK so this was cleaned and exported, I think that should happen in another file 
+fish_id_wide <- read_csv(here("data", "fish_indicators.csv")) %>%
+  clean_names()
+
+fish_id_clean <- fish_id_wide %>% 
+  filter(year >= filter_year) %>% 
+  select(-country_code, -country_name) %>% 
+  filter(country %in% iuu_index_countries)
+
+
+fish_index_final <- fish_id_clean %>% 
+  group_by(country) %>%
+  filter(!is.na(aquaculture_production_metric_tons)) %>%
+  slice_max(order_by = year, n = 1) %>%
+  ungroup() %>%
+  distinct(country, .keep_all = TRUE) %>% 
+
+
+  fish_index_final$aquaculture_production_metric_tons[fish_index_final$aquaculture_production_metric_tons == 0.000000e+00] <- .0000000000001
+  
+
+fish_index_final$ratio_capture <- fish_index_final$capture_fisheries_production_metric_tons/fish_index_final$aquaculture_production_metric_tons
+  
+```
+
+### Skylight treatment logic
+```{r}
+# Create a data frame with NAs #renamed from common_countries_df
+skylight_treatment_df <- data.frame(country = iuu_index_countries, iuu_index_countries = NA, active_skylight_countries = NA)
+
+# Fill in values in the data frame based on the presence in vectors
+skylight_treatment_df$iuu_index_countries[match(iuu_index_countries, skylight_treatment_df$country)] <- iuu_index_countries
+skylight_treatment_df$active_skylight_countries[match(active_skylight_countries, skylight_treatment_df$country)] <- active_skylight_countries
+
+skylight_treatment_df$skylight_treatment <- ifelse(is.na(skylight_treatment_df$active_skylight_countries), 0, 1)
+
+skylight_treatment_df <- skylight_treatment_df %>% select(country, skylight_treatment)
+```
+
+
+### Compile skylight data
+```{r}
+ctk <- c("deal_title", "country", "deal_deployment_date", "deal_organisation","organization_type")
+
+active_country_dates_df <- skylight_deal_dates %>% 
+  subset(select = ctk) %>% 
+  filter(deal_deployment_date > 2019) %>% 
+  group_by(country) %>%
+  filter(deal_deployment_date == min(deal_deployment_date, na.rm = TRUE)) %>%
+  ungroup() %>%  #filter out duplicate country entries for country level analysis 
+  distinct(country, deal_deployment_date, .keep_all = TRUE)
+
+active_country_dates_clean <- active_country_dates_df %>% 
+  mutate(treatment_year = as.integer(format(as.Date(deal_deployment_date), "%Y"))) %>% 
+  filter(organization_type != "Regional") %>% #come back to this assumption later
+  select(country, treatment_year) #%>% 
+ # rename(deal_country = country)
+
+# Combine all Skylight data into one df to use in final compilation
+skylight_df_final <- skylight_treatment_df %>% 
+  full_join(active_country_dates_clean, join_by(country)) %>% 
+  full_join(weekly_country_engagements, join_by(country)) %>% 
+  full_join(country_sessions, join_by(country))
+
+skylight_df_final[is.na(skylight_df_final)] <- 0
+
+skylight_df_final$skylight_treatment <- as.factor(skylight_df_final$skylight_treatment)
+```
+
+
+### Compile all datasets
+```{r}
+countries_to_exclude <- 
+  c("Montenegro", "Cook Islands", "Falkland Islands", "Pitcairn Islands", "Réunion", "Antarctica", "North Korea", "Taiwan")
+
+all_index_df <- skylight_df_final %>% 
+  full_join(wb_gov_index_df, join_by(country)) %>% 
+  full_join(iuufr_index_final, join_by(country)) %>% 
+  full_join(fish_index_final, join_by(country)) %>% 
+  full_join(wb_gdp_pc_final, join_by(country)) %>% 
+  #filter(!country %in% countries_to_exclude) %>% 
+  select(-treatment_year, -no_of_active_weeks, -sessions) %>% 
+  clean_names() 
+
+
+na_counts <- as.data.frame(colSums(is.na(all_index_df)))
+```
+
