@@ -51,7 +51,8 @@ fill_na_mean <- function(x) {
 ```
 
 
-### Skylight data
+### Skylight data 
+## why do we need engagements and skylight deal dates? are we doing something with this? 
 ```{r}
 ### Organization engagements
 organization_engagements <- read_csv(here("data", "Skylight Program Metrics_Organizations_Table.csv")) %>% clean_names()
@@ -115,12 +116,12 @@ iuufr_index_final <- iuu_index_scores %>%
          dependency_on_fish_for_protein,
          party_to_the_psma,
          trade_balance_for_fisheries_products) %>% 
-  mutate(year = as.Date(year)) %>% 
+  mutate(year = as.Date(year)) %>%  #somehow this is turning all of the years to 1975?
   group_by(country) %>%
   arrange(year) %>%
-  select(-year) %>% 
-  fill(everything()) %>% 
-  slice(n())
+  select(-year) %>% #why are we getting rid of year? how are we going to join later?
+  fill(everything()) %>% ## I don't understand what this code is doing
+  slice(n()) ## I don't understand what this code is doing
 
 ```
 
@@ -161,9 +162,9 @@ wb_gov_index_df$voice_and_accountability_estimate <- as.numeric(wb_gov_index_df$
 
 wb_gov_final_df <- wb_gov_index_df %>%
   group_by(country) %>%
-  filter(year == max(year, na.rm = TRUE)) %>%  # Filter for the maximum year value
+  filter(year == max(year, na.rm = TRUE)) %>% #does this line remove NAs? # Filter for the maximum year value
   ungroup() %>%
-  select(-year) %>% 
+  select(-year) %>% #why are we removing the year?
   fill(everything())
 
 ```
@@ -181,7 +182,7 @@ wb_gdp_pc_final <- wb_gdp_pc %>%
                names_to = "year", 
                values_to = "gdp_per_capita") %>% 
   group_by(country) %>%
-  filter(!is.na(gdp_per_capita)) %>%
+  filter(!is.na(gdp_per_capita)) %>% #removing NA rows, why are we doing this?
   slice_max(order_by = year, n = 1) %>%
   ungroup() %>%
   distinct(country, .keep_all = TRUE) %>% 
@@ -204,13 +205,13 @@ fish_id_clean <- fish_id_wide %>%
 
 fish_index_final <- fish_id_clean %>% 
   group_by(country) %>%
-  filter(!is.na(aquaculture_production_metric_tons)) %>%
+  filter(!is.na(aquaculture_production_metric_tons)) %>% #removing NA rows 
   slice_max(order_by = year, n = 1) %>%
   ungroup() %>%
-  distinct(country, .keep_all = TRUE) %>% 
+  distinct(country, .keep_all = TRUE)
 
 
-  fish_index_final$aquaculture_production_metric_tons[fish_index_final$aquaculture_production_metric_tons == 0.000000e+00] <- .0000000000001
+fish_index_final$aquaculture_production_metric_tons[fish_index_final$aquaculture_production_metric_tons == 0.000000e+00] <- .0000000000001
   
 
 fish_index_final$ratio_capture <- fish_index_final$capture_fisheries_production_metric_tons/fish_index_final$aquaculture_production_metric_tons
@@ -279,4 +280,17 @@ all_index_df <- skylight_df_final %>%
 
 na_counts <- as.data.frame(colSums(is.na(all_index_df)))
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
