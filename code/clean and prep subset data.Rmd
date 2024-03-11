@@ -29,30 +29,9 @@ library(zoo)
 filter_year <- 2019 #to update across all dataframes 
 ```
 
-### Functions
-```{r}
-# Define function to replace NAs with the most recent non-NA value within each group (country)
-# For IUUFR dataset 
-fill_na_last_non_na <- function(x) {
-  if (any(!is.na(x))) {
-    na.locf(x, na.rm = FALSE, fromLast = TRUE)
-  } else {
-    x
-  }
-}
-
-# Define function to replace NA values with the mean of the respective indicator column
-fill_na_mean <- function(x) {
-  if (any(is.na(x))) {
-    x[is.na(x)] <- mean(x, na.rm = TRUE)
-  }
-  x
-}
-```
 
 
-### Skylight data 
-## why do we need engagements and skylight deal dates? are we doing something with this? 
+### Skylight data
 ```{r}
 ### Organization engagements
 organization_engagements <- read_csv(here("data", "Skylight Program Metrics_Organizations_Table.csv")) %>% clean_names()
@@ -102,26 +81,34 @@ iuu_index_countries <- c(unique(iuu_index_scores$country))
 
 
 # Make each indicator a separate column 
-iuufr_index_final <- iuu_index_scores %>% 
+iuufr_index_wide <- iuu_index_scores %>% 
   select(country, year, indicator_name, score) %>% 
   pivot_wider(names_from = "indicator_name", 
              values_from = "score") %>% 
   clean_names() %>% 
+  group_by(country) %>%
+  fill(everything()) %>%  # Fill missing values within each country group
+  slice(n()) %>%  # Keep only the last observation within each country group
+  ungroup() %>%
+  select(-year) 
+
+iuufr_na_counts <- as.data.frame(colSums(is.na(iuufr_index_wide))) %>% 
+  rename(na_counts = 1) %>% 
+  filter(na_counts < 15)
+
+#Finalize iuufr data set, clean up some NAs, select interesting indicators
+iuufr_index_final <- iuufr_index_wide %>%
   select(country,
-         year,
          vessels_on_iuu_lists,
-         registered_vessels_with_foreign_or_unknown_ownership,
-         mandatory_vessel_tracking_for_commercial_seagoing_fleet,
+         views_of_mcs_practitioners_on_coastal_compliance_incidents,
+         ratification_accession_of_unclos_convention,
+         provision_of_vessel_data_for_inclusion_in_global_record,
+         designated_ports_specified_for_entry_by_foreign_vessels,
          size_of_eez,
          dependency_on_fish_for_protein,
          party_to_the_psma,
-         trade_balance_for_fisheries_products) %>% 
-  mutate(year = as.Date(year)) %>%  #somehow this is turning all of the years to 1975?
-  group_by(country) %>%
-  arrange(year) %>%
-  select(-year) %>% #why are we getting rid of year? how are we going to join later?
-  fill(everything()) %>% ## I don't understand what this code is doing
-  slice(n()) ## I don't understand what this code is doing
+         trade_balance_for_fisheries_products) 
+
 
 ```
 
@@ -152,20 +139,27 @@ wb_gov_index_df <- gov_id_estimates %>%
   clean_names() %>% 
   filter(country %in% iuu_index_countries) %>% 
   select(-country_code) %>% 
-  select(country, year, voice_and_accountability_estimate, control_of_corruption_estimate) 
+  #select(country, year, voice_and_accountability_estimate, control_of_corruption_estimate) 
+  group_by(country) %>%
+  fill(everything()) %>%  # Fill missing values within each country group
+  slice(n()) %>%  # Keep only the last observation within each country group
+  ungroup() %>%
+  select(-year)
+
+wb_gov_na_counts <- as.data.frame(colSums(is.na(wb_gov_index_df))) %>% 
+  rename(na_counts = 1) %>% 
+  filter(na_counts < 15)
 
 # Convert indicator scores to numeric
-wb_gov_index_df$year <- as.numeric(wb_gov_index_df$year)
 wb_gov_index_df$control_of_corruption_estimate <- as.numeric(wb_gov_index_df$control_of_corruption_estimate)
+wb_gov_index_df$government_effectiveness_estimate <- as.numeric(wb_gov_index_df$government_effectiveness_estimate)
+wb_gov_index_df$political_stability_and_absence_of_violence_terrorism_estimate <- as.numeric(wb_gov_index_df$political_stability_and_absence_of_violence_terrorism_estimate)
+wb_gov_index_df$regulatory_quality_estimate <- as.numeric(wb_gov_index_df$regulatory_quality_estimate)
+wb_gov_index_df$rule_of_law_estimate <- as.numeric(wb_gov_index_df$rule_of_law_estimate)
 wb_gov_index_df$voice_and_accountability_estimate <- as.numeric(wb_gov_index_df$voice_and_accountability_estimate)
 
 
-wb_gov_final_df <- wb_gov_index_df %>%
-  group_by(country) %>%
-  filter(year == max(year, na.rm = TRUE)) %>% #does this line remove NAs? # Filter for the maximum year value
-  ungroup() %>%
-  select(-year) %>% #why are we removing the year?
-  fill(everything())
+wb_gov_index_final <- wb_gov_index_df 
 
 ```
 
@@ -181,12 +175,11 @@ wb_gdp_pc_final <- wb_gdp_pc %>%
   pivot_longer(cols = 2:64,
                names_to = "year", 
                values_to = "gdp_per_capita") %>% 
-  group_by(country) %>%
-  filter(!is.na(gdp_per_capita)) %>% #removing NA rows, why are we doing this?
-  slice_max(order_by = year, n = 1) %>%
-  ungroup() %>%
-  distinct(country, .keep_all = TRUE) %>% 
   filter(country %in% iuu_index_countries) %>% 
+  group_by(country) %>%
+  fill(everything()) %>%  # Fill missing values within each country group
+  slice(n()) %>%  # Keep only the last observation within each country group
+  ungroup() %>%
   select(-year)
 ```
 
@@ -205,11 +198,15 @@ fish_id_clean <- fish_id_wide %>%
 
 fish_index_final <- fish_id_clean %>% 
   group_by(country) %>%
-  filter(!is.na(aquaculture_production_metric_tons)) %>% #removing NA rows 
-  slice_max(order_by = year, n = 1) %>%
+  fill(everything()) %>%  # Fill missing values within each country group
+  slice(n()) %>%  # Keep only the last observation within each country group
   ungroup() %>%
-  distinct(country, .keep_all = TRUE)
-
+  select(-year) %>% 
+  #replace aquaculture NA values with 0
+  mutate(aquaculture_production_metric_tons = replace(aquaculture_production_metric_tons, is.na(aquaculture_production_metric_tons), 0)) %>% 
+  #replace total_fisheries_production NA values with capture_fisheries_production values
+  mutate(total_fisheries_production_metric_tons = ifelse(is.na(total_fisheries_production_metric_tons), capture_fisheries_production_metric_tons, total_fisheries_production_metric_tons))
+  
 
 fish_index_final$aquaculture_production_metric_tons[fish_index_final$aquaculture_production_metric_tons == 0.000000e+00] <- .0000000000001
   
@@ -266,31 +263,20 @@ skylight_df_final$skylight_treatment <- as.factor(skylight_df_final$skylight_tre
 ### Compile all datasets
 ```{r}
 countries_to_exclude <- 
-  c("Montenegro", "Cook Islands", "Falkland Islands", "Pitcairn Islands", "Réunion", "Antarctica", "North Korea", "Taiwan")
+  c("Falkland Islands", "Pitcairn Islands", "Réunion", "Antarctica", "Cook Islands", "Taiwan", "North Korea") #excluded because they aren't in every dataset
 
 all_index_df <- skylight_df_final %>% 
-  full_join(wb_gov_index_df, join_by(country)) %>% 
+  full_join(wb_gov_index_final, join_by(country)) %>% 
   full_join(iuufr_index_final, join_by(country)) %>% 
   full_join(fish_index_final, join_by(country)) %>% 
   full_join(wb_gdp_pc_final, join_by(country)) %>% 
-  #filter(!country %in% countries_to_exclude) %>% 
+  filter(!country %in% countries_to_exclude) %>% 
   select(-treatment_year, -no_of_active_weeks, -sessions) %>% 
-  clean_names() 
+  clean_names() %>% 
+  mutate_all(~ ifelse(is.na(.), mean(., na.rm = TRUE), .)) #replace all remaining NA values with the mean of the column 
+  
 
 
-na_counts <- as.data.frame(colSums(is.na(all_index_df)))
+final_na_counts <- as.data.frame(colSums(is.na(all_index_df)))
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
 
