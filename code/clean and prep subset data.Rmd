@@ -115,12 +115,11 @@ iuufr_index_final <- iuu_index_scores %>%
          dependency_on_fish_for_protein,
          party_to_the_psma,
          trade_balance_for_fisheries_products) %>% 
-  mutate(year = as.Date(year)) %>% 
   group_by(country) %>%
-  arrange(year) %>%
-  select(-year) %>% 
-  fill(everything()) %>% 
-  slice(n())
+  filter(year == max(year, na.rm = TRUE)) %>%  # Filter for the maximum year value
+  fill(everything()) %>%  # Fill missing values within each country group
+  ungroup() %>%
+  select(-year) 
 
 ```
 
@@ -162,9 +161,10 @@ wb_gov_index_df$voice_and_accountability_estimate <- as.numeric(wb_gov_index_df$
 wb_gov_final_df <- wb_gov_index_df %>%
   group_by(country) %>%
   filter(year == max(year, na.rm = TRUE)) %>%  # Filter for the maximum year value
+  fill(everything()) %>%  # Fill missing values within each country group
   ungroup() %>%
-  select(-year) %>% 
-  fill(everything())
+  select(-year) 
+
 
 ```
 
@@ -181,12 +181,10 @@ wb_gdp_pc_final <- wb_gdp_pc %>%
                names_to = "year", 
                values_to = "gdp_per_capita") %>% 
   group_by(country) %>%
-  filter(!is.na(gdp_per_capita)) %>%
-  slice_max(order_by = year, n = 1) %>%
+  filter(year == max(year, na.rm = TRUE)) %>%  # Filter for the maximum year value
+  fill(everything()) %>%  # Fill missing values within each country group
   ungroup() %>%
-  distinct(country, .keep_all = TRUE) %>% 
-  filter(country %in% iuu_index_countries) %>% 
-  select(-year)
+  select(-year) 
 ```
 
 
@@ -204,10 +202,10 @@ fish_id_clean <- fish_id_wide %>%
 
 fish_index_final <- fish_id_clean %>% 
   group_by(country) %>%
-  filter(!is.na(aquaculture_production_metric_tons)) %>%
-  slice_max(order_by = year, n = 1) %>%
+  filter(year == max(year, na.rm = TRUE)) %>%  # Filter for the maximum year value
+  fill(everything()) %>%  # Fill missing values within each country group
   ungroup() %>%
-  distinct(country, .keep_all = TRUE) %>% 
+  select(-year) 
 
 
   fish_index_final$aquaculture_production_metric_tons[fish_index_final$aquaculture_production_metric_tons == 0.000000e+00] <- .0000000000001
