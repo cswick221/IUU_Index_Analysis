@@ -24,22 +24,33 @@ library(countrycode)
 ```{r}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
-active_countries <- read_csv("Skylight Program Metrics_Countries_Table.csv")
+active_countries <- read_csv(here("data","Skylight Program Metrics_Countries_Table.csv"))
 
 merged_data <- merge(world, active_countries, by.x = "name_long", by.y = "Country")
 
 
 ```
 
+Yemen
+Congo, R. of
+Somalia
+Ukraine
+Equatorial Guinea
+Indonesia
+Sao Tome & Principe
+Guyana
+Madagascar
+Nigeria
+
 
 ```{r}
-top_iuu_countries <- c("China", "Russia", "Yemen", "India", "Iran", "Indonesia", "Taiwan", "Comoros", "South Korea", "Ukraine" )
+top_iuu_countries <- c("Yemen", "Republic of Congo", "Somalia","Ukraine", "Indonesia","Equatorial Guinea", "Sao Tome & Principe", "Guyana", "Madagascar", "Nigeria" )
 
 world$highlight <- ifelse(world$iso_a3 %in% top_iuu_countries, 1, 0)
 ```
 
 ```{r}
-highlighted_countries <- c("China", "Russia", "Yemen", "India", "Iran", "Indonesia", "Taiwan", "Comoros", "South Korea", "Ukraine")
+highlighted_countries <- c("Yemen", "Republic of Congo", "Somalia","Ukraine", "Indonesia","Equatorial Guinea", "Sao Tome & Principe", "Guyana", "Madagascar", "Nigeria")
 
 # Convert country names to ISO A3 codes
 iso_a3_codes <- countrycode(sourcevar = highlighted_countries,
