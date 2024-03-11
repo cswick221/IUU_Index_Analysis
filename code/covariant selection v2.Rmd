@@ -13,20 +13,17 @@ library(MuMIn)
 ```{r}
 id_keep_4 <- c("skylight_treatment",
                "vessels_on_iuu_lists",
-             "registered_vessels_with_foreign_or_unknown_ownership",
-             "mandatory_vessel_tracking_for_commercial_seagoing_fleet",
              "size_of_eez" ,
              "dependency_on_fish_for_protein",
              "party_to_the_psma",
              "trade_balance_for_fisheries_products",
              "voice_and_accountability_estimate",
              "control_of_corruption_estimate",
-             #"ratio_capture_2" , #when this is commented out, we don't get the crazy long errorr...
              "ratio_capture",
-             "gdp_per_capita") #removed country, made sure skylight_treatment was first
+             "gdp_per_capita")
 
 
-sub_df_4 <- all_index_df %>% 
+sub_df_4 <- final_sub_df %>% 
   select(all_of(id_keep_4))
 ```
 

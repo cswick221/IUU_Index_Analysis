@@ -256,7 +256,6 @@ skylight_df_final <- skylight_treatment_df %>%
 
 skylight_df_final[is.na(skylight_df_final)] <- 0
 
-skylight_df_final$skylight_treatment <- as.factor(skylight_df_final$skylight_treatment)
 ```
 
 
@@ -265,18 +264,19 @@ skylight_df_final$skylight_treatment <- as.factor(skylight_df_final$skylight_tre
 countries_to_exclude <- 
   c("Falkland Islands", "Pitcairn Islands", "Réunion", "Antarctica", "Cook Islands", "Taiwan", "North Korea") #excluded because they aren't in every dataset
 
-all_index_df <- skylight_df_final %>% 
+final_sub_df <- skylight_treatment_df %>% 
   full_join(wb_gov_index_final, join_by(country)) %>% 
   full_join(iuufr_index_final, join_by(country)) %>% 
   full_join(fish_index_final, join_by(country)) %>% 
   full_join(wb_gdp_pc_final, join_by(country)) %>% 
   filter(!country %in% countries_to_exclude) %>% 
-  select(-treatment_year, -no_of_active_weeks, -sessions) %>% 
   clean_names() %>% 
-  mutate_all(~ ifelse(is.na(.), mean(., na.rm = TRUE), .)) #replace all remaining NA values with the mean of the column 
-  
+  mutate_all(~ ifelse(is.na(.), mean(., na.rm = TRUE), .)) %>% #replace all remaining NA values with the mean of the column 
+  select(-aquaculture_production_metric_tons, -total_fisheries_production_metric_tons)
+
+final_sub_df$skylight_treatment <- as.factor(final_sub_df$skylight_treatment)
 
 
-final_na_counts <- as.data.frame(colSums(is.na(all_index_df)))
+final_na_counts <- as.data.frame(colSums(is.na(final_sub_df)))
 ```
 
