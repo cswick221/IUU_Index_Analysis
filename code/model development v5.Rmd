@@ -1,0 +1,257 @@
+---
+title: "model development v5"
+author: "E.M.Thomas"
+date: "2024-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MuMIn)
+library(pROC)
+```
+
+
+```{r}
+cor_matrix_sub <- cor(final_sub_df[,3:20])
+
+#Get the indices of highly correlated pairs
+high_cor_indices <- which(abs(cor_matrix_sub) > 0.7 & abs(cor_matrix_sub) < 1, arr.ind = TRUE)
+
+# Extract row and column names
+high_cor_variables <- rownames(cor_matrix_sub)[high_cor_indices[,1]]
+high_cor_variables2 <- colnames(cor_matrix_sub)[high_cor_indices[,2]]
+
+# Combine variables into pairs
+high_cor_pairs <- cbind(high_cor_variables, high_cor_variables2)
+
+# Create a dataframe with pairs
+high_cor_df_sub <- data.frame(high_cor_pairs) 
+
+```
+
+
+```{r}
+subset_df <- final_sub_df %>% 
+  select(-country,
+          -control_of_corruption_estimate,
+         -political_stability_and_absence_of_violence_terrorism_estimate,#also looks decent
+         -regulatory_quality_estimate,
+         -rule_of_law_estimate,
+         #-voice_and_accountability_estimate,#this was really good come back to it later
+         -government_effectiveness_estimate)
+
+subset_df$skylight_treatment <- as.factor(subset_df$skylight_treatment)
+
+```
+
+
+```{r}
+options(na.action = "na.fail")
+
+glm_5 <- glm(skylight_treatment ~ ., data = subset_df, family = binomial)
+ms_5 <- dredge(glm_5, rank = "BIC")
+```
+
+
+### Model 5.1
+```{r}
+### Area under the curve: 0.8248
+glm_5.1_df <- subset_df %>%  
+  select(skylight_treatment,
+        views_of_mcs_practitioners_on_coastal_compliance_incidents,
+         voice_and_accountability_estimate,
+         gdp_per_capita)
+ 
+
+#trying it with all of variables 
+glm_5.1 <- glm(skylight_treatment ~ .,
+               data = glm_5.1_df, family = binomial)
+
+summary(glm_5.1)
+
+# Get predicted probabilities
+
+y_prob_5.1 <- predict(glm_5.1, newdata = glm_5.1_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve_5.1 <- roc(glm_5.1_df$skylight_treatment, y_prob_5.1)
+
+# Calculate AUC
+auc_value_5.1 <- auc(roc_curve_5.1)
+
+# Print the AUC value
+print(auc_value_5.1)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_5.1 <- summary(glm_5.1)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_5.1 <- as.data.frame(coef_summary_5.1)
+
+# Rename the columns for clarity
+colnames(coef_df_5.1) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+```
+
+
+### Model 5.2 
+```{r}
+### Area under the curve: 0.8479
+glm_5.2_df <- subset_df %>%  
+  select(skylight_treatment,
+         size_of_eez,
+        views_of_mcs_practitioners_on_coastal_compliance_incidents,
+         voice_and_accountability_estimate,
+         gdp_per_capita)
+
+#trying it with all of variables 
+glm_5.2 <- glm(skylight_treatment ~ .,
+               data = glm_5.2_df, family = binomial)
+
+summary(glm_5.2)
+
+# Get predicted probabilities
+
+y_prob_5.2 <- predict(glm_5.2, newdata = glm_5.2_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve_5.2 <- roc(glm_5.2_df$skylight_treatment, y_prob_5.2)
+
+# Calculate AUC
+auc_value_5.2 <- auc(roc_curve_5.2)
+
+# Print the AUC value
+print(auc_value_5.2)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_5.2 <- summary(glm_5.2)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_5.2 <- as.data.frame(coef_summary_5.2)
+
+# Rename the columns for clarity
+colnames(coef_df_5.2) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+```
+
+### Model 5.3
+```{r}
+### Area under the curve: 0.8274
+glm_5.3_df <- subset_df %>%  
+  select(skylight_treatment,
+         trade_balance_for_fisheries_products,
+        views_of_mcs_practitioners_on_coastal_compliance_incidents,
+         voice_and_accountability_estimate,
+         gdp_per_capita)
+
+#trying it with all of variables 
+glm_5.3 <- glm(skylight_treatment ~ .,
+               data = glm_5.3_df, family = binomial)
+
+summary(glm_5.3)
+
+# Get predicted probabilities
+
+y_prob_5.3 <- predict(glm_5.3, newdata = glm_5.3_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve_5.3 <- roc(glm_5.3_df$skylight_treatment, y_prob_5.3)
+
+# Calculate AUC
+auc_value_5.3 <- auc(roc_curve_5.3)
+
+# Print the AUC value
+print(auc_value_5.3)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_5.3 <- summary(glm_5.3)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_5.3 <- as.data.frame(coef_summary_5.3)
+
+# Rename the columns for clarity
+colnames(coef_df_5.3) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+```
+
+
+
+### Model 5.4
+
+```{r}
+### Area under the curve: 0.7711
+glm_5.4_df <- subset_df %>%  
+  select(skylight_treatment,
+         voice_and_accountability_estimate,
+         gdp_per_capita)
+
+#trying it with all of variables 
+glm_5.4 <- glm(skylight_treatment ~ .,
+               data = glm_5.4_df, family = binomial)
+
+summary(glm_5.4)
+
+# Get predicted probabilities
+
+y_prob_5.4 <- predict(glm_5.4, newdata = glm_5.4_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve_5.4 <- roc(glm_5.4_df$skylight_treatment, y_prob_5.4)
+
+# Calculate AUC
+auc_value_5.4 <- auc(roc_curve_5.4)
+
+# Print the AUC value
+print(auc_value_5.4)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_5.4 <- summary(glm_5.4)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_5.4 <- as.data.frame(coef_summary_5.4)
+
+# Rename the columns for clarity
+colnames(coef_df_5.4) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+```
+
+### Model 5.5
+```{r}
+### Area under the curve: 0.8483
+glm_5.5_df <- subset_df %>%  
+  select(skylight_treatment,
+         voice_and_accountability_estimate,
+         views_of_mcs_practitioners_on_coastal_compliance_incidents,
+         trade_balance_for_fisheries_products,
+         size_of_eez,
+         gdp_per_capita)
+
+#trying it with all of variables 
+glm_5.5 <- glm(skylight_treatment ~ .,
+               data = glm_5.5_df, family = binomial)
+
+summary(glm_5.5)
+
+# Get predicted probabilities
+
+y_prob_5.5 <- predict(glm_5.5, newdata = glm_5.5_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve_5.5 <- roc(glm_5.5_df$skylight_treatment, y_prob_5.5)
+
+# Calculate AUC
+auc_value_5.5 <- auc(roc_curve_5.5)
+
+# Print the AUC value
+print(auc_value_5.5)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_5.5 <- summary(glm_5.5)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_5.5 <- as.data.frame(coef_summary_5.5)
+
+# Rename the columns for clarity
+colnames(coef_df_5.5) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+```
+
+
