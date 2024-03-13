@@ -11,7 +11,7 @@ library(MuMIn)
 library(pROC)
 ```
 
-
+## Check for collinearity
 ```{r}
 cor_matrix_sub <- cor(final_sub_df[,3:20])
 
