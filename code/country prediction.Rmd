@@ -1,0 +1,87 @@
+---
+title: "country prediction"
+author: "E.M.Thomas"
+date: "2024-03-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Final model 
+
+```{r}
+### AUC 0.8232
+glm_final_df <- final_sub_df %>%  
+  select(c("size_of_eez", "gdp_per_capita", "voice_and_accountability_estimate",
+           "views_of_mcs_practitioners_on_coastal_compliance_incidents","skylight_treatment", "trade_balance_for_fisheries_products")) 
+ 
+
+#trying it with all of variables 
+glm_final <- glm(skylight_treatment ~ .,
+               data = glm_final_df, family = binomial)
+
+summary(glm_final)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_final, newdata = glm_final_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_final_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary <- summary(glm_final)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df <- as.data.frame(coef_summary)
+
+# Rename the columns for clarity
+colnames(coef_df) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+```
+
+
+# Predict
+```{r}
+
+predict_df <- final_sub_df %>% 
+  select(country, skylight_treatment, size_of_eez, gdp_per_capita, voice_and_accountability_estimate, views_of_mcs_practitioners_on_coastal_compliance_incidents, trade_balance_for_fisheries_products)
+
+prediction <- predict(glm_final, predict_df)
+
+# Ensure that both prediction and actual values are factors with the same levels
+prediction <- factor(ifelse(prediction > 0.5, "1", "0"))
+actual <- predict_df$skylight_treatment
+
+# Create confusion matrix
+confusion_matrix <- table(Predicted = prediction, Actual = actual)
+
+# Calculate accuracy
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+
+# Identify false positives (predicted as positive but actually negative)
+false_positives <- predict_df$country[prediction == "1" & actual == "0"]
+
+# Create dataframe with predicted and actual values for each country
+prediction_df <- data.frame(
+  Country = predict_df$country,
+  Predicted = as.character(prediction),
+  Actual = as.character(actual)
+)
+
+# Display confusion matrix, accuracy, and false positives
+print(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
+cat("False positives countries:", false_positives, "\n")
+print(prediction_df)
+```
+
+
+
