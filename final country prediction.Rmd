@@ -1,0 +1,110 @@
+---
+title: "trying new things!!"
+author: "E.M.Thomas"
+date: "2024-03-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+```
+
+```{r}
+subset_df <- final_sub_df %>% 
+  select(#-country,
+          -control_of_corruption_estimate,
+         -political_stability_and_absence_of_violence_terrorism_estimate,#also looks decent
+         -regulatory_quality_estimate,
+         -rule_of_law_estimate,
+         #-voice_and_accountability_estimate,#this was really good come back to it later
+         -government_effectiveness_estimate)
+
+subset_df$skylight_treatment <- as.factor(subset_df$skylight_treatment)
+```
+
+
+```{r}
+library(dplyr)
+library(pROC)
+
+# Select relevant columns
+glm_final_df <- final_sub_df %>%  
+  select(c("size_of_eez", "gdp_per_capita", "voice_and_accountability_estimate",
+           "skylight_treatment")) 
+
+# Convert outcome variable to factor
+glm_final_df$skylight_treatment <- factor(glm_final_df$skylight_treatment)
+
+# Calculate class weights
+class_weights <- ifelse(glm_final_df$skylight_treatment == 0, 
+                        sum(glm_final_df$skylight_treatment == 0) / (2 * sum(glm_final_df$skylight_treatment == 0)), 
+                        sum(glm_final_df$skylight_treatment == 0) / (2 * sum(glm_final_df$skylight_treatment == 1)))
+
+# Fit logistic regression model with class weights
+glm_final <- glm(skylight_treatment ~ .,
+                 data = glm_final_df, 
+                 family = binomial,
+                 weights = ifelse(glm_final_df$skylight_treatment == 0, class_weights[1], class_weights[2]))
+
+# Display summary of the model
+summary(glm_final)
+
+# Get predicted probabilities
+y_prob <- predict(glm_final, newdata = glm_final_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_final_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary <- summary(glm_final)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df <- as.data.frame(coef_summary)
+
+# Rename the columns for clarity
+colnames(coef_df) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+# Make predictions on new data
+predict_df <- final_sub_df %>% 
+  select(country, skylight_treatment, size_of_eez, gdp_per_capita, voice_and_accountability_estimate, views_of_mcs_practitioners_on_coastal_compliance_incidents, trade_balance_for_fisheries_products)
+
+prediction <- predict(glm_final, predict_df, type = 'response')
+
+# Convert predicted probabilities to binary predictions using a threshold of 0.5
+prediction <- ifelse(prediction > 0.5, "1", "0")
+
+# Create confusion matrix
+confusion_matrix <- table(Predicted = prediction, Actual = predict_df$skylight_treatment)
+
+# Calculate accuracy
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+
+# Identify false positives (predicted as positive but actually negative)
+false_positives <- predict_df$country[prediction == "1" & predict_df$skylight_treatment == "0"]
+
+# Create dataframe with predicted and actual values for each country
+prediction_df <- data.frame(
+  Country = predict_df$country,
+  Predicted = as.character(prediction),
+  Actual = as.character(predict_df$skylight_treatment)
+)
+
+# Display confusion matrix, accuracy, and false positives
+print(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
+cat("False positives countries:", false_positives, "\n")
+print(prediction_df)
+
+```
+
+
+
+
+
