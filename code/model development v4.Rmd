@@ -1,0 +1,205 @@
+---
+title: "model development v4"
+author: "Chloe Swick"
+date: "2024-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MuMIn)
+library(pROC)
+```
+
+```{r}
+id_keep_4 <- c("skylight_treatment",
+               "vessels_on_iuu_lists",
+             "size_of_eez" ,
+             "dependency_on_fish_for_protein",
+             "party_to_the_psma",
+             "trade_balance_for_fisheries_products",
+             "voice_and_accountability_estimate",
+             "control_of_corruption_estimate",
+             "ratio_capture",
+             "gdp_per_capita")
+
+sub_df_4 <- final_sub_df %>% 
+  select(all_of(id_keep_4))
+```
+
+
+```{r}
+options(na.action = "na.fail")
+
+glm_4 <- glm(skylight_treatment ~ ., data = sub_df_4, family = binomial)
+
+
+ms_4 <- dredge(glm_1, rank = "BIC")
+```
+
+## Model 1
+```{r}
+### AUC 0.8232
+### (Intercept)                        0.015030 *  
+### size_of_eez                        0.002107 ** 
+### gdp_per_capita                     0.000172 ***
+### voice_and_accountability_estimate  0.003807 ** 
+
+
+glm_4.1_df <- sub_df_4 %>%  
+  select(c("size_of_eez", "gdp_per_capita","voice_and_accountability_estimate", "skylight_treatment")) 
+ 
+glm_4.1 <- glm(skylight_treatment ~ .,
+               data = glm_4.1_df, family = binomial)
+
+summary(glm_4.1)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_4.1, newdata = glm_4.1_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_4.1_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_4.1 <- summary(glm_4.1)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_4.1 <- as.data.frame(coef_summary_4.1)
+
+# Rename the columns for clarity
+colnames(coef_df_4.1) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+```
+
+
+## Model 2 
+```{r} 
+### AUC 0.8308
+### (Intercept)                        0.00517 **
+### size_of_eez                        0.00197 **
+### voice_and_accountability_estimate  0.00242 **
+### control_of_corruption_estimate     0.11185   
+### gdp_per_capita                     0.00676 **
+
+glm_4.2_df <- sub_df_4 %>%  
+  select(c("size_of_eez", "voice_and_accountability_estimate", "control_of_corruption_estimate", "gdp_per_capita", "skylight_treatment")) 
+ 
+ 
+glm_4.2 <- glm(skylight_treatment ~ ., 
+               data = glm_4.2_df, family = binomial)
+
+summary(glm_4.2)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_4.2, newdata = glm_4.2_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_4.2_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+# Extract coefficients, standard errors, z-values, and p-values from the summary
+coef_summary_4.2 <- summary(glm_4.2)$coefficients
+
+# Convert the matrix to a dataframe
+coef_df_4.2 <- as.data.frame(coef_summary_4.2)
+
+# Rename the columns for clarity
+colnames(coef_df_4.2) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
+
+```
+
+
+## Model 3 
+```{r} 
+### AUC 0.8276
+### size_of_eez                           0.002346 ** 
+### voice_and_accountability_estimate     0.003384 ** 
+### gdp_per_capita                        0.000118 ***
+### trade_balance_for_fisheries_products  0.176101     
+
+glm_4.3_df <- sub_df_4 %>%  
+  select(c("size_of_eez", "voice_and_accountability_estimate", "gdp_per_capita", "trade_balance_for_fisheries_products", "skylight_treatment")) 
+ 
+glm_4.3 <- glm(skylight_treatment ~ ., 
+               data = glm_4.3_df, family = binomial)
+
+summary(glm_4.3)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_4.3, newdata = glm_4.3_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_4.3_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+
+```
+
+## Model 4.4 
+```{r} 
+### AUC 0.765
+### (Intercept)     0.000435 ***
+### size_of_eez     0.000478 ***
+### gdp_per_capita  0.001803 ** 
+
+
+glm_4.4_df <- sub_df_4 %>%  
+  select(c("size_of_eez", "gdp_per_capita", "skylight_treatment")) 
+ 
+
+glm_4.4 <- glm(skylight_treatment ~ ., 
+               data = glm_4.4_df, family = binomial)
+
+summary(glm_4.4)
+
+# Get predicted probabilities
+
+y_prob <- predict(glm_4.4, newdata = glm_4.4_df, type = 'response')
+
+# Create a ROC curve object
+roc_curve <- roc(glm_4.4_df$skylight_treatment, y_prob)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
+# Print the AUC value
+print(auc_value)
+
+
+```
+## Summarize
+
+```{r}
+# Create a list of model names
+model_names <- paste("glm_4.", 1:4, sep = "")
+
+# Calculate BIC and Delta BIC values
+bic_output <- bictab(list(glm_4.1, glm_4.2, glm_4.3, glm_4.4)) %>%
+  select(BIC, Delta_BIC)
+
+# Combine model names with the output dataframe
+bic_output_df <- cbind(Model = model_names, bic_output)
+
+```
+
+
+
