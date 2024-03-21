@@ -12,13 +12,12 @@ knitr::opts_chunk$set(echo = TRUE)
 # Final model 
 
 ```{r}
-### AUC 0.8232
+### 
 glm_final_df <- final_sub_df %>%  
   select(c("size_of_eez", "gdp_per_capita", "voice_and_accountability_estimate",
-           "views_of_mcs_practitioners_on_coastal_compliance_incidents","skylight_treatment", "trade_balance_for_fisheries_products")) 
+        "skylight_treatment")) 
  
 
-#trying it with all of variables 
 glm_final <- glm(skylight_treatment ~ .,
                data = glm_final_df, family = binomial)
 

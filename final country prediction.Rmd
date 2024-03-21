@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(caret)
+library(ggplot2)
 ```
 
 ```{r}
@@ -73,7 +74,7 @@ colnames(coef_df) <- c("Estimate", "Std.Error", "z value", "Pr(>|z|)")
 
 # Make predictions on new data
 predict_df <- final_sub_df %>% 
-  select(country, skylight_treatment, size_of_eez, gdp_per_capita, voice_and_accountability_estimate, views_of_mcs_practitioners_on_coastal_compliance_incidents, trade_balance_for_fisheries_products)
+  select(country, skylight_treatment, size_of_eez, gdp_per_capita, voice_and_accountability_estimate)
 
 prediction <- predict(glm_final, predict_df, type = 'response')
 
@@ -104,6 +105,44 @@ print(prediction_df)
 
 ```
 
+
+#report visualization
+```{r}
+likely_adopters <- predict_df %>% 
+  mutate(likely_adopter = ifelse(country %in% false_positives, 'Likely Adopter',
+                                 ifelse(skylight_treatment == 1, 'Skylight Adopter', 'Non-Skylight Adopter')))
+
+# Define colors for each group
+colors <- c("skyblue", "lightgreen", "lightpink")
+
+# Plot for each explanatory variable
+ggplot(likely_adopters, aes(x = factor(skylight_treatment), y = voice_and_accountability_estimate, fill = factor(likely_adopter))) +
+  geom_boxplot() +
+  labs(title = "Skylight Treatment, Likely Adopter, and Non-Skylight Treatment Groups",
+       x = "Skylight Treatment",
+       y = "Voice and Accountability (Index -2.5 - 2.5)") +
+  scale_fill_manual(values = colors, name = "Adopter Group") +
+  theme_minimal()
+
+ggplot(likely_adopters, aes(x = factor(skylight_treatment), y = size_of_eez, fill = factor(likely_adopter))) +
+  geom_boxplot() +
+  labs(title = "Skylight Treatment, Likely Adopter, and Non-Skylight Treatment Groups",
+       x = "Skylight Treatment",
+       y = "Size of EEZ (Index 1 - 5)") +
+  scale_fill_manual(values = colors, name = "Adopter Group") +
+  theme_minimal()
+
+ggplot(likely_adopters, aes(x = factor(skylight_treatment), y = gdp_per_capita, fill = factor(likely_adopter))) +
+  geom_boxplot() +
+  labs(title = "Skylight Treatment, Likely Adopter, and Non-Skylight Treatment Groups",
+       x = "Skylight Treatment",
+       y = "GDP per Capita ($)") +
+  scale_fill_manual(values = colors, name = "Adopter Group") +
+  theme_minimal() +
+  coord_cartesian(ylim = c(0, 150000)) 
+
+
+```
 
 
 
