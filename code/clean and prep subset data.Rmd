@@ -69,6 +69,38 @@ skylight_deal_dates$country <- countrycode(skylight_deal_dates$deal_country, "co
 ```
 
 
+```{r}
+
+### Weekly country engagements
+new_weekly_country_engagements <- read_csv(here("data", "Skylight Program Metrics_Countries_Table new.csv")) %>% clean_names()
+
+new_weekly_country_engagements <- new_weekly_country_engagements%>% 
+  filter(no_of_active_weeks >2) %>% 
+  rename(country = 1)
+
+new_weekly_country_engagements$country <- countrycode(new_weekly_country_engagements$country, "country.name", "country.name") 
+
+#list of active skylight countries 
+new_active_skylight_countries <- weekly_country_engagements$country 
+
+
+# Extract the list of active countries from the new data
+new_active_skylight_countries <- new_weekly_country_engagements$country
+
+# Find common observations
+common_countries <- intersect(active_skylight_countries, new_active_skylight_countries)
+cat("Common Countries:", common_countries, "\n")
+
+# Find differences
+only_in_old <- setdiff(active_skylight_countries, new_active_skylight_countries)
+cat("Countries only in old_active_countries:", only_in_old, "\n")
+
+only_in_new <- setdiff(new_active_skylight_countries, active_skylight_countries)
+cat("Countries only in new_active_countries:", only_in_new, "\n")
+```
+
+
+
 # IUUFR Data
 ```{r}
 # Read in and clean the IUUFR data
