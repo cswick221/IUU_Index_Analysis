@@ -28,7 +28,6 @@ active_countries <- read_csv(here("data","Skylight Program Metrics_Countries_Tab
 
 merged_data <- merge(world, active_countries, by.x = "name_long", by.y = "Country")
 
-
 ```
 
 Yemen

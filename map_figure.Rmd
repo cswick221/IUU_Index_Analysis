@@ -1,0 +1,272 @@
+---
+title: "results map"
+author: "Chloe Swick"
+date: "2024-03-21"
+output: html_document
+---
+
+```{r setup, echo = TRUE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(here)
+library(broom)
+
+# Spatial data packages
+library(sf) # sf is simple features 
+library(tmap)
+library(rnaturalearth) # geographic data, change returnclass to sf 
+library(ggpattern)
+library(countrycode)
+```
+
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+active_countries <- read_csv(here("data","Skylight Program Metrics_Countries_Table.csv"))
+
+merged_data <- merge(world, active_countries, by.x = "name_long", by.y = "Country")
+
+subset_skylight <- subset_df %>% 
+  filter(skylight_treatment == 1)
+
+merged_2 <- merge(world, subset_skylight, by.x = "name_long", by.y = "country")
+```
+
+
+world map 
+countries actively using Skylight highlited in some way 
+one map for each variable, each variable a different color 
+one outline color for skylight countries, another outline color for suggested countries?
+transparency associated with the amount of that variable, i.e. larger EEZ will have a more opaque color 
+higher GDP will have a more opaque color 
+transparency should be associated with the sign of the coefficient 
+
+```{r}
+model_data <- subset_df %>% 
+  select(country, voice_and_accountability_estimate, gdp_per_capita, size_of_eez)
+
+model_data$country <- countrycode(model_data$country, "country.name", "country.name")
+
+world$name_long <- countrycode(world$name_long, "country.name", "country.name")
+
+full_merge <- full_join(world, model_data, by = join_by(name_long == country))
+
+wb_merge <- full_join(world, wb_gov_map, by= join_by(name_long == country))
+
+wb_merge$voice_and_accountability_estimate <- as.numeric(wb_merge$voice_and_accountability_estimate)
+
+gdp_merge <- full_join(world, wb_gdp_map, by= join_by(name_long == country))
+gdp_merge$gdp_per_capita <- as.numeric(gdp_merge$gdp_per_capita)
+```
+
+
+```{r}
+wb_gov_map <- gov_id_estimates %>%
+  pivot_longer(cols = 5:28,
+               names_to = "year", 
+               values_to = "value") %>% 
+  subset(select = -series_code) %>% 
+  pivot_wider(names_from = "series_name",
+              values_from = "value") %>% 
+  clean_names() %>% 
+  group_by(country) %>%
+  fill(everything()) %>%  # Fill missing values within each country group
+  slice(n()) %>%  # Keep only the last observation within each country group
+  ungroup() %>%
+  select(country, country_code, voice_and_accountability_estimate)
+  #filter(year==2022) %>% 
+ 
+```
+
+```{r}
+### GDP per capita
+
+wb_gdp_map <- wb_gdp_pc %>% 
+  pivot_longer(cols = 2:64,
+               names_to = "year", 
+               values_to = "gdp_per_capita") %>% 
+  group_by(country) %>%
+  fill(everything()) %>%  # Fill missing values within each country group
+  slice(n()) %>%  # Keep only the last observation within each country group
+  ungroup() %>%
+  select(country, gdp_per_capita)
+```
+
+```{r}
+suggested_countries <- c("Chile", "Costa Rica", "India", "Jamaica", "Kiribati", "Marshall Islands", "Mozambique", "Palau", "Senegal", "Seychelles", "Solomon Islands", "South Africa", "Tuvalu")
+
+# Convert country names to ISO A3 codes
+iso_a3_codes <- countrycode(sourcevar = suggested_countries,
+                            origin = "country.name",
+                            destination = "iso3c",
+                            warn = FALSE)
+
+# Load world map data
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# Create a new layer with red outlines for highlighted countries
+highlight_layer <- geom_sf(data = world[world$iso_a3 %in% iso_a3_codes, ], 
+                            fill = "transparent", color = "#336e94", size = 1)
+highlight_layer_2 <- geom_sf(data = merged_data, 
+                             fill = "transparent", color = "darkred", size = 1)
+
+# Combine the layers
+
+full_merge$size_of_eez <- as.numeric(full_merge$size_of_eez)
+
+# Check for missing values
+if (anyNA(full_merge$size_of_eez)) {
+  # Handle missing values (e.g., replace with 0 or impute)
+  full_merge$voice[is.na(full_merge$size_of_eez)] <- 0
+}
+
+if (anyNA(full_merge$voice_and_accountability_estimate)) {
+  # Handle missing values (e.g., replace with 0 or impute)
+  full_merge$voice_and_accountability_estimate[is.na(full_merge$voice_and_accountability_estimate)] <- 0
+}
+
+if (anyNA(full_merge$gdp_per_capita)) {
+  # Handle missing values (e.g., replace with 0 or impute)
+  full_merge$gdp_per_capita[is.na(full_merge$gdp_per_capita)] <- 0
+}
+
+ 
+
+######## GDP 
+breaks <- c(-Inf, 500, 1000, 10000, 50000, Inf)  # Adjust these breaks according to your data
+
+# Define transparency levels based on breaks
+#transparency <- cut(full_merge$gdp_md_est, breaks = breaks, labels = c(0.0, 0.2, 0.5, 0.7, 0.9))
+
+# Define transparency levels based on breaks
+transparency <- cut(gdp_merge$gdp_per_capita, breaks = breaks, labels = c(0.2, 0.4, 0.6, .7, 1.0))
+
+
+
+my_plot_g <- ggplot() +
+  geom_sf(data = gdp_merge, aes(fill = "wheat3", alpha = transparency), color = "seashell1") +
+  highlight_layer +
+  highlight_layer_2 +
+  theme(legend.background = element_rect(fill = "transparent"), 
+        legend.box.background = element_rect(fill = "transparent"), 
+        panel.background = element_rect(fill = "transparent"), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        plot.background = element_rect(fill = "transparent", color = NA)) +
+  scale_fill_manual(values = "wheat3")  # Set fill color to blue
+
+print(my_plot_g)
+
+ggsave(my_plot_g, filename = "gdp.png", bg = "transparent")
+
+###### Voice 
+breaks <- c(-2, -1, 0, 1, 2)  # Adjust these breaks according to your data
+
+# Define transparency levels based on breaks
+transparency <- cut(wb_merge$voice_and_accountability_estimate, breaks = breaks, labels = c(0.0, 0.3, 0.6, 0.9))
+
+my_plot_v <- ggplot() +
+  geom_sf(data = wb_merge, aes(fill = "wheat3", alpha = transparency), color = "seashell1") +
+  highlight_layer +
+  highlight_layer_2 +
+  theme(legend.background = element_rect(fill = "transparent"), 
+        legend.box.background = element_rect(fill = "transparent"), 
+        panel.background = element_rect(fill = "transparent"), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        plot.background = element_rect(fill = "transparent", color = NA)) +
+  scale_fill_manual(values = "wheat3")  # Set fill color to blue
+
+print(my_plot_v)
+
+ggsave(my_plot_v, filename = "voice.png", bg = "transparent")
+
+####### EEZ
+my_plot_e <- ggplot() +
+  geom_sf(data = full_merge, aes(fill = "wheat3", alpha = size_of_eez), color = "seashell1") +
+  highlight_layer +
+  highlight_layer_2 +
+  theme(legend.background = element_rect(fill = "transparent"), 
+        legend.box.background = element_rect(fill = "transparent"), 
+        panel.background = element_rect(fill = "transparent"), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        plot.background = element_rect(fill = "transparent", color = NA)) +
+  scale_fill_manual(values = "wheat3")  # Set fill color to blue
+
+print(my_plot_e)
+
+ggsave(my_plot_e, filename = "gdp.png", bg = "transparent")
+
+
+
+```
+
+```{r}
+
+highlight_layer_1a <- geom_sf(data = full_merge[full_merge$iso_a3 %in% iso_a3_codes, ], 
+                           fill = "#336e94", color = "transparent", aes(alpha = size_of_eez))
+
+ggplot() + highlight_layer_1a
+
+highlight_layer_2a <- geom_sf(data = merged_2, 
+                             fill = "darkred", color = "transparent", aes(alpha = size_of_eez, size = 1))
+
+ggplot() + highlight_layer_2a
+
+
+my_plot2 <- ggplot() +
+  geom_sf(data = full_merge, fill = "antiquewhite2", color = "seashell1", aes(alpha = size_of_eez)) +
+ # scale_fill_manual(values = c("antiquewhite2" = "antiquewhite2"), guide = "none") +
+  highlight_layer_2a +
+  # scale_fill_manual(values = c("#336e94" = "#336e94"), guide = "none") +
+  highlight_layer_1a +
+  # scale_fill_manual(values = c("darkred" = "darkred"), guide = "none") +
+  theme(legend.background = element_rect(fill = "transparent"), 
+        legend.box.background = element_rect(fill = "transparent"), 
+        panel.background = element_rect(fill = "transparent"), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        plot.background = element_rect(fill = "transparent", 
+                                       color = NA)) 
+
+print(my_plot2)
+
+ggsave(my_plot2, filename = "size_of_eez3.png", bg = "transparent")
+
+```
+
+
+
+```{r}
+highlight_layer_1a <- geom_sf(data = full_merge[full_merge$iso_a3 %in% iso_a3_codes, ], 
+                               aes(fill = "blue"), color = NA, size = 0)
+
+highlight_layer_2a <- geom_sf(data = merged_2, 
+                               aes(fill = "darkred"), color = NA, size = 0)
+
+my_plot2 <- ggplot() +
+  geom_sf(data = full_merge, aes(fill = ifelse(full_merge$iso_a3 %in% iso_a3_codes, NA, "antiquewhite2")), color = NA, size = 0) +
+  highlight_layer_1a +
+  highlight_layer_2a +
+  scale_fill_manual(values = c(antiquewhite2 = "antiquewhite2", darkred = "darkred", blue = "blue")) +
+  theme_void()
+
+print(my_plot2)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
